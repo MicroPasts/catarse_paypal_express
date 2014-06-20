@@ -7,6 +7,7 @@ Catarse paypal express integration with [Catarse](http://github.com/danielweinma
 Add this line to your Catarse application's Gemfile and
 run `bundle install` in your terminal:
 
+    # Gemfile
     gem 'catarse_paypal_express'
 
 Since this gem is a Rails Engine intented to work on Catarse's applications,
@@ -51,9 +52,9 @@ Initialize dummy database:
     $ bundle exec rake db:create
     $ cd ../../
 
-And then execute:
+And see the test suite passing running:
 
-    $ bundle
+    $ bundle exec rspec
 
 ## Contributing
 
