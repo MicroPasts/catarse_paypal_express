@@ -1,4 +1,4 @@
-# CatarsePaypalExpress [![Build Status](https://travis-ci.org/catarse/catarse_paypal_express.png)](https://travis-ci.org/catarse/catarse_paypal_express) 
+# CatarsePaypalExpress [![Build Status](https://travis-ci.org/MicroPasts/catarse_paypal_express.svg?branch=master)](https://travis-ci.org/MicroPasts/catarse_paypal_express) 
 
 Catarse paypal express integration with [Catarse](http://github.com/danielweinmann/catarse) crowdfunding platform
 
