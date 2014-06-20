@@ -73,15 +73,15 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
 
   def contribution
     @contribution ||= if params['id']
-                  PaymentEngines.find_payment(id: params['id'])
+                  PaymentEngine.find_payment(id: params['id'])
                 elsif params['txn_id']
-                  PaymentEngines.find_payment(payment_id: params['txn_id']) || (params['parent_txn_id'] && PaymentEngines.find_payment(payment_id: params['parent_txn_id']))
+                  PaymentEngine.find_payment(payment_id: params['txn_id']) || (params['parent_txn_id'] && PaymentEngine.find_payment(payment_id: params['parent_txn_id']))
                 end
   end
 
   def process_paypal_message(data)
     extra_data = (data['charset'] ? JSON.parse(data.to_json.force_encoding(data['charset']).encode('utf-8')) : data)
-    PaymentEngines.create_payment_notification contribution_id: contribution.id, extra_data: extra_data
+    PaymentEngine.create_payment_notification contribution_id: contribution.id, extra_data: extra_data
 
     if data["checkout_status"] == 'PaymentActionCompleted'
       contribution.confirm!

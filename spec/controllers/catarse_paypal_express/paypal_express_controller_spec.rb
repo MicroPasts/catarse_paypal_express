@@ -5,8 +5,8 @@ require 'spec_helper'
 describe CatarsePaypalExpress::PaypalExpressController do
   SCOPE = CatarsePaypalExpress::PaypalExpressController::SCOPE
   before do
-    PaymentEngines.stub(:find_payment).and_return(contribution)
-    PaymentEngines.stub(:create_payment_notification)
+    PaymentEngine.stub(:find_payment).and_return(contribution)
+    PaymentEngine.stub(:create_payment_notification)
     controller.stub(:main_app).and_return(main_app)
     controller.stub(:current_user).and_return(current_user)
     controller.stub(:gateway).and_return(gateway)
@@ -234,7 +234,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
   describe "#gateway" do
     before do
       controller.stub(:gateway).and_call_original
-      PaymentEngines.stub(:configuration).and_return(paypal_config)
+      PaymentEngine.stub(:configuration).and_return(paypal_config)
     end
     subject{ controller.gateway }
     context "when we have the paypal configuration" do
@@ -243,9 +243,9 @@ describe CatarsePaypalExpress::PaypalExpressController do
       end
       before do
         ActiveMerchant::Billing::PaypalExpressGateway.should_receive(:new).with({
-          login: PaymentEngines.configuration[:paypal_username],
-          password: PaymentEngines.configuration[:paypal_password],
-          signature: PaymentEngines.configuration[:paypal_signature]
+          login: PaymentEngine.configuration[:paypal_username],
+          password: PaymentEngine.configuration[:paypal_password],
+          signature: PaymentEngine.configuration[:paypal_signature]
         }).and_return('gateway instance')
       end
       it{ should == 'gateway instance' }
@@ -265,7 +265,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     context "when we have an id" do
       before do
         controller.stub(:params).and_return({'id' => '1'})
-        PaymentEngines.should_receive(:find_payment).with(id: '1').and_return(contribution)
+        PaymentEngine.should_receive(:find_payment).with(id: '1').and_return(contribution)
       end
       it{ should == contribution }
     end
@@ -273,8 +273,8 @@ describe CatarsePaypalExpress::PaypalExpressController do
     context "when we have an txn_id that does not return contribution but a parent_txn_id that does" do
       before do
         controller.stub(:params).and_return({'txn_id' => '1', 'parent_txn_id' => '2'})
-        PaymentEngines.should_receive(:find_payment).with(payment_id: '1').and_return(nil)
-        PaymentEngines.should_receive(:find_payment).with(payment_id: '2').and_return(contribution)
+        PaymentEngine.should_receive(:find_payment).with(payment_id: '1').and_return(nil)
+        PaymentEngine.should_receive(:find_payment).with(payment_id: '2').and_return(contribution)
       end
       it{ should == contribution }
     end
@@ -282,7 +282,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     context "when we do not have any id" do
       before do
         controller.stub(:params).and_return({})
-        PaymentEngines.should_not_receive(:find_payment)
+        PaymentEngine.should_not_receive(:find_payment)
       end
       it{ should be_nil }
     end
@@ -290,7 +290,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     context "when we have an txn_id" do
       before do
         controller.stub(:params).and_return({'txn_id' => '1'})
-        PaymentEngines.should_receive(:find_payment).with(payment_id: '1').and_return(contribution)
+        PaymentEngine.should_receive(:find_payment).with(payment_id: '1').and_return(contribution)
       end
       it{ should == contribution }
     end
@@ -301,7 +301,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     let(:data){ {'test_data' => true} }
     before do
       controller.stub(:params).and_return({'id' => 1})
-      PaymentEngines.should_receive(:create_payment_notification).with(contribution_id: contribution.id, extra_data: data)
+      PaymentEngine.should_receive(:create_payment_notification).with(contribution_id: contribution.id, extra_data: data)
     end
 
     context "when data['checkout_status'] == 'PaymentActionCompleted'" do

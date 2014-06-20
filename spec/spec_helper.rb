@@ -28,7 +28,7 @@ RSpec.configure do |config|
   config.include CatarsePaypalExpress::Engine.routes.url_helpers
 
   config.before(:each) do
-    PaymentEngines.stub(:configuration).and_return({})
+    PaymentEngine.stub(:configuration).and_return({})
   end
 end
 

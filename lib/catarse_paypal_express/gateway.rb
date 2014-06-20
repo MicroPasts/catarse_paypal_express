@@ -2,7 +2,7 @@ module CatarsePaypalExpress
   class Gateway
     include ActiveMerchant::Billing::Integrations
 
-    def initialize configuration = PaymentEngines.configuration
+    def initialize configuration = PaymentEngine.configuration
       @configuration = configuration
     end
 
