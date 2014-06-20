@@ -45,10 +45,11 @@ Clone the repository:
 
     $ git clone git://github.com/devton/catarse_paypal_express.git
 
-Add the catarse code into test/dummy:
+Initialize dummy database:
 
-    $ git submodule init
-    $ git submodule update
+    $ cd catarse_paypal_express/test/dummy
+    $ bundle exec rake db:create
+    $ cd ../../
 
 And then execute:
 
