@@ -10,6 +10,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     controller.stub(:main_app).and_return(main_app)
     controller.stub(:current_user).and_return(current_user)
     controller.stub(:gateway).and_return(gateway)
+    controller.stub(:resource).and_return(contribution)
   end
 
   subject{ response }
@@ -38,7 +39,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     address_state: '123',
     address_zip_code: '123',
     address_phone_number: '123',
-    payment_method: 'PayPal'
+    payment_method: ::Configuration[:currency_charge]
   }) }
 
   describe "GET review" do
@@ -46,6 +47,124 @@ describe CatarsePaypalExpress::PaypalExpressController do
       get :review, id: contribution.id, use_route: 'catarse_paypal_express'
     end
     it{ should render_template(:review) }
+  end
+
+  describe "POST pay" do
+    context 'when response raises a exception' do
+      before do
+        allow(gateway).to receive(:setup_purchase).and_raise(StandardError)
+        allow(main_app).to receive(:new_project_contribution_path).and_return('error url')
+      end
+
+      it 'should assign flash error' do
+        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        expect(controller.flash[:failure]).to eql(I18n.t('paypal_error', scope: SCOPE))
+      end
+
+      it 'redirects to new contribution page' do
+        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        expect(response).to redirect_to('error url')
+      end
+    end
+
+    context 'when successul' do
+      let(:success_response) do
+        double('success_response',
+          token:  'ABCD',
+          params: { 'correlation_id' => '123' }
+        )
+      end
+
+      before do
+        allow(main_app).to receive(:new_project_contribution_path).and_return('success url')
+        allow(gateway).to receive(:redirect_url_for).with('ABCD').and_return('success url')
+        allow(gateway).to receive(:setup_purchase).and_return(success_response)
+      end
+
+      it 'setups purchase using payment service' do
+        expect(gateway).to receive(:setup_purchase).with(
+          contribution.price_in_cents,
+          ip:                request.remote_ip,
+          return_url:        'http://test.host/catarse_paypal_express/paypal_express/success?contribution_id=1',
+          cancel_return_url: 'http://test.host/catarse_paypal_express/paypal_express/cancel?contribution_id=1',
+          currency_code:     ::Configuration[:currency_charge],
+          description:       I18n.t('paypal_description', scope: SCOPE, project_name: contribution.project.name, value: contribution.display_value),
+          notify_url:        'http://test.host/catarse_paypal_express/payment/paypal_express/ipn'
+        ).and_return(success_response)
+        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+      end
+
+      it 'updates contribution with payment information' do
+        expect(contribution).to receive(:update_attributes).with(
+          payment_method: 'paypal_express',
+          payment_token:  'ABCD'
+        )
+        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+      end
+
+      it 'redirects to successful contribution page' do
+        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        expect(response).to redirect_to('success url')
+      end
+    end
+  end
+
+  describe "GET success" do
+    let(:success_details){ double('success_details', params: {'transaction_id' => '12345', "checkout_status" => "PaymentActionCompleted"}) }
+    let(:params){{ id: contribution.id, PayerID: '123', locale: 'en', use_route: 'catarse_paypal_express' }}
+
+    before do
+      gateway.should_receive(:purchase).with(contribution.price_in_cents, {
+        ip: request.remote_ip,
+        token: contribution.payment_token,
+        payer_id: params[:PayerID]
+      }).and_return(success_details)
+      controller.should_receive(:process_paypal_message).with(success_details.params)
+      contribution.should_receive(:update_attributes).with(payment_id: '12345')
+      set_redirect_expectations
+      get :success, params
+    end
+
+    context "when purchase is successful" do
+      let(:set_redirect_expectations) do
+        main_app.
+          should_receive(:project_contribution_path).
+          with(project_id: contribution.project.id, id: contribution.id).
+          and_return('back url')
+      end
+      it{ should redirect_to 'back url' }
+      it 'should assign flash message' do
+        controller.flash[:success].should == I18n.t('success', scope: SCOPE)
+      end
+    end
+
+    context 'when paypal purchase raises some error' do
+      let(:set_redirect_expectations) do
+        main_app.
+          should_receive(:project_contribution_path).
+          with(project_id: contribution.project.id, id: contribution.id).
+          and_raise('error')
+        main_app.
+          should_receive(:new_project_contribution_path).
+          with(contribution.project).
+          and_return('new back url')
+      end
+      it 'should assign flash error' do
+        controller.flash[:failure].should == I18n.t('paypal_error', scope: SCOPE)
+      end
+      it{ should redirect_to 'new back url' }
+    end
+  end
+
+  describe "GET cancel" do
+    before do
+      main_app.should_receive(:new_project_contribution_path).with(contribution.project).and_return('new contribution url')
+      get :cancel, { id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express' }
+    end
+    it 'should show for user the flash message' do
+      controller.flash[:failure].should == I18n.t('paypal_cancel', scope: SCOPE)
+    end
+    it{ should redirect_to 'new contribution url' }
   end
 
   describe "POST ipn" do
@@ -128,109 +247,6 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
   end
 
-  describe "POST pay" do
-    before do
-      set_paypal_response
-      post :pay, { id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express' }
-    end
-
-
-    context 'when response raises a exception' do
-      let(:set_paypal_response) do
-        main_app.should_receive(:new_project_contribution_path).with(contribution.project).and_return('error url')
-        gateway.should_receive(:setup_purchase).and_raise(StandardError)
-      end
-      it 'should assign flash error' do
-        controller.flash[:failure].should == I18n.t('paypal_error', scope: SCOPE)
-      end
-      it{ should redirect_to 'error url' }
-    end
-
-    context 'when successul' do
-      let(:set_paypal_response) do
-        success_response = double('success_response', {
-          token: 'ABCD',
-          params: { 'correlation_id' => '123' }
-        })
-        gateway.should_receive(:setup_purchase).with(
-          contribution.price_in_cents,
-          {
-            ip: request.remote_ip,
-            return_url: 'http://test.host/catarse_paypal_express/payment/paypal_express/1/success',
-            cancel_return_url: 'http://test.host/catarse_paypal_express/payment/paypal_express/1/cancel',
-            currency_code: 'BRL',
-            description: I18n.t('paypal_description', scope: SCOPE, :project_name => contribution.project.name, :value => contribution.display_value),
-            notify_url: 'http://test.host/catarse_paypal_express/payment/paypal_express/ipn'
-          }
-        ).and_return(success_response)
-        contribution.should_receive(:update_attributes).with({
-          payment_method: "PayPal",
-          payment_token: "ABCD"
-        })
-        gateway.should_receive(:redirect_url_for).with('ABCD').and_return('success url')
-      end
-      it{ should redirect_to 'success url' }
-    end
-  end
-
-  describe "GET cancel" do
-    before do
-      main_app.should_receive(:new_project_contribution_path).with(contribution.project).and_return('new contribution url')
-      get :cancel, { id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express' }
-    end
-    it 'should show for user the flash message' do
-      controller.flash[:failure].should == I18n.t('paypal_cancel', scope: SCOPE)
-    end
-    it{ should redirect_to 'new contribution url' }
-  end
-
-  describe "GET success" do
-    let(:success_details){ double('success_details', params: {'transaction_id' => '12345', "checkout_status" => "PaymentActionCompleted"}) }
-    let(:params){{ id: contribution.id, PayerID: '123', locale: 'en', use_route: 'catarse_paypal_express' }}
-
-    before do
-      gateway.should_receive(:purchase).with(contribution.price_in_cents, {
-        ip: request.remote_ip,
-        token: contribution.payment_token,
-        payer_id: params[:PayerID]
-      }).and_return(success_details)
-      controller.should_receive(:process_paypal_message).with(success_details.params)
-      contribution.should_receive(:update_attributes).with(payment_id: '12345')
-      set_redirect_expectations
-      get :success, params
-    end
-
-    context "when purchase is successful" do
-      let(:set_redirect_expectations) do
-        main_app.
-          should_receive(:project_contribution_path).
-          with(project_id: contribution.project.id, id: contribution.id).
-          and_return('back url')
-      end
-      it{ should redirect_to 'back url' }
-      it 'should assign flash message' do
-        controller.flash[:success].should == I18n.t('success', scope: SCOPE)
-      end
-    end
-
-    context 'when paypal purchase raises some error' do
-      let(:set_redirect_expectations) do
-        main_app.
-          should_receive(:project_contribution_path).
-          with(project_id: contribution.project.id, id: contribution.id).
-          and_raise('error')
-        main_app.
-          should_receive(:new_project_contribution_path).
-          with(contribution.project).
-          and_return('new back url')
-      end
-      it 'should assign flash error' do
-        controller.flash[:failure].should == I18n.t('paypal_error', scope: SCOPE)
-      end
-      it{ should redirect_to 'new back url' }
-    end
-  end
-
   describe "#gateway" do
     before do
       controller.stub(:gateway).and_call_original
@@ -260,11 +276,11 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
   end
 
-  describe "#contribution" do
-    subject{ controller.contribution }
+  describe "#resource" do
+    subject{ controller.resource }
     context "when we have an id" do
       before do
-        controller.stub(:params).and_return({'id' => '1'})
+        controller.stub(:params).and_return({'contribution_id' => '1'})
         PaymentEngine.should_receive(:find_payment).with(id: '1').and_return(contribution)
       end
       it{ should == contribution }
@@ -300,7 +316,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     subject{ controller.process_paypal_message data }
     let(:data){ {'test_data' => true} }
     before do
-      controller.stub(:params).and_return({'id' => 1})
+      controller.stub(:params).and_return({'contribution_id' => 1})
       PaymentEngine.should_receive(:create_payment_notification).with(contribution_id: contribution.id, extra_data: data)
     end
 

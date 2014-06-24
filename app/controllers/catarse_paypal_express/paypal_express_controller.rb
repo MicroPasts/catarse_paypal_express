@@ -4,6 +4,7 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
   skip_before_filter :force_http
   SCOPE = "projects.contributions.checkout"
   layout :false
+  helper_method :resource_params
 
   def review
   end
@@ -25,23 +26,31 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
 
   def pay
     begin
-      response = gateway.setup_purchase(contribution.price_in_cents, {
-        ip: request.remote_ip,
-        return_url: success_paypal_express_url(id: contribution.id),
-        cancel_return_url: cancel_paypal_express_url(id: contribution.id),
-        currency_code: 'BRL',
-        description: t('paypal_description', scope: SCOPE, :project_name => contribution.project.name, :value => contribution.display_value),
-        notify_url: ipn_paypal_express_index_url
+      description = t('paypal_description',
+        scope:        SCOPE,
+        project_name: resource.project.name,
+        value:        resource.display_value
+      )
+      response = gateway.setup_purchase(resource.price_in_cents, {
+        ip:                request.remote_ip,
+        return_url:        success_url(resource_params),
+        cancel_return_url: cancel_url(resource_params),
+        currency_code:     ::Configuration[:currency_charge],
+        description:       description,
+        notify_url:        ipn_paypal_express_index_url
       })
 
-      process_paypal_message response.params
-      contribution.update_attributes payment_method: 'PayPal', payment_token: response.token
+      process_paypal_message(response.params)
+      resource.update_attributes(
+        payment_method: CatarsePaypalExpress::Interface.new.name,
+        payment_token:  response.token
+      )
 
       redirect_to gateway.redirect_url_for(response.token)
     rescue Exception => e
       Rails.logger.info "-----> #{e.inspect}"
       flash[:failure] = t('paypal_error', scope: SCOPE)
-      return redirect_to main_app.new_project_contribution_path(contribution.project)
+      return redirect_to main_app.new_project_contribution_path(resource.project)
     end
   end
 
@@ -55,20 +64,20 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
 
       # we must get the deatils after the purchase in order to get the transaction_id
       process_paypal_message purchase.params
-      contribution.update_attributes payment_id: purchase.params['transaction_id'] if purchase.params['transaction_id']
+      resource.update_attributes payment_id: purchase.params['transaction_id'] if purchase.params['transaction_id']
 
       flash[:success] = t('success', scope: SCOPE)
-      redirect_to main_app.project_contribution_path(project_id: contribution.project.id, id: contribution.id)
+      redirect_to main_app.project_contribution_path(project_id: resource.project, id: resource)
     rescue Exception => e
       Rails.logger.info "-----> #{e.inspect}"
       flash[:failure] = t('paypal_error', scope: SCOPE)
-      return redirect_to main_app.new_project_contribution_path(contribution.project)
+      return redirect_to main_app.new_project_contribution_path(resource.project)
     end
   end
 
   def cancel
     flash[:failure] = t('paypal_cancel', scope: SCOPE)
-    redirect_to main_app.new_project_contribution_path(contribution.project)
+    redirect_to main_app.new_project_contribution_path(resource.project)
   end
 
   def contribution
@@ -84,25 +93,40 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
     PaymentEngine.create_payment_notification contribution_id: contribution.id, extra_data: extra_data
 
     if data["checkout_status"] == 'PaymentActionCompleted'
-      contribution.confirm!
+      resource.confirm!
     elsif data["payment_status"]
       case data["payment_status"].downcase
       when 'completed'
-        contribution.confirm!
+        resource.confirm!
       when 'refunded'
-        contribution.refund!
+        resource.refund!
       when 'canceled_reversal'
-        contribution.cancel!
+        resource.cancel!
       when 'expired', 'denied'
-        contribution.pendent!
+        resource.pendent!
       else
-        contribution.waiting! if contribution.pending?
+        resource.wait_confirmation! if resource.pending?
       end
     end
   end
 
   def gateway
     @gateway ||= CatarsePaypalExpress::Gateway.instance
+  end
+
+  def resource
+    @resource ||= if params['txn_id']
+        PaymentEngine.find_payment(payment_id: params['txn_id']) ||
+          (params['parent_txn_id'] && PaymentEngine.find_payment(payment_id: params['parent_txn_id']))
+      else
+        # :contribution_id => Contribution
+        resource_class = resource_params.keys.first[0..-4].camelize.constantize
+        resource_class.find(resource_params.values.first)
+      end
+  end
+
+  def resource_params
+    @resource_param ||= Hash[*params.slice(:contribution_id, :match_id).first]
   end
 
   protected
