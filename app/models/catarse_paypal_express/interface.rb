@@ -25,17 +25,14 @@ module CatarsePaypalExpress
     end
 
     def payment_path(resource)
-      key = "#{ActiveModel::Naming.param_key(resource)}_id"
-      CatarsePaypalExpress::Engine.
-        routes.url_helpers.review_path(key => resource)
+      params = {
+        "#{ActiveModel::Naming.param_key(resource)}_id".to_sym => resource.to_param
+      }
+      CatarsePaypalExpress::Engine.routes.url_helpers.review_path(params)
     end
 
     def payout_class
       nil
-    end
-
-    def review_path(contribution)
-      CatarsePaypalExpress::Engine.routes.url_helpers.review_paypal_express_path(contribution)
     end
   end
 end
