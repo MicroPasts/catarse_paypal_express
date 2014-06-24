@@ -2,15 +2,15 @@ en:
   projects:
     contributions:
       refund:
-        success: 'Pedido de reembolso enviado com sucesso!'
-        error: 'OPS! Ocorreu um erro ao tentar enviar o pedido de reembolso.'
+        error: 'OOPS! An error occured while asking for the refund.'
+        success: 'Refund requested successfuly.'
       review:
         paypal: 'PayPal'
         international:
-          section_title: 'You will be directed to the PayPal site to complete payment.'
           button: 'Redirect to PayPal'
+          section_title: 'You will be directed to the PayPal site to complete payment.'
       checkout:
         paypal_cancel: "Your PayPal payment was canceled. Please try again."
-        paypal_description: "Back project %{project_name} with %{value} (BRL)"
+        paypal_description: "Contribution to project %{project_name} with %{value}"
         paypal_error: "Ooops. There was an error while sending your payment to PayPal. Please try again."
         success: "Your back was successfully made. Thanks a lot!"
