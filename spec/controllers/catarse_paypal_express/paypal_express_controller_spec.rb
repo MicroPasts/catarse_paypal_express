@@ -205,15 +205,21 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
   end
 
-  describe "GET cancel" do
+  describe 'GET cancel' do
     before do
-      main_app.should_receive(:new_project_contribution_path).with(contribution.project).and_return('create contribution url')
-      get :cancel, { id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express' }
+      allow(main_app).to receive(:new_project_contribution_path).
+        and_return('create contribution url')
     end
+
     it 'should show for user the flash message' do
-      controller.flash[:failure].should == I18n.t('paypal_cancel', scope: SCOPE)
+      get :cancel, id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+      expect(flash[:alert]).to eql(I18n.t('paypal_cancel', scope: SCOPE))
     end
-    it{ should redirect_to 'create contribution url' }
+
+    it 'redirects to new contribution url' do
+      get :cancel, id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+      expect(response).to redirect_to('create contribution url')
+    end
   end
 
   describe "POST ipn" do

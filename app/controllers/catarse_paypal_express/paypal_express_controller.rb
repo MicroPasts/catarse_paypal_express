@@ -80,7 +80,7 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
   end
 
   def cancel
-    flash[:failure] = t('paypal_cancel', scope: SCOPE)
+    flash.alert = t('paypal_cancel', scope: SCOPE)
     redirect_to main_app.new_project_contribution_path(resource.project)
   end
 
