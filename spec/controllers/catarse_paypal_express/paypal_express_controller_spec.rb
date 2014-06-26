@@ -39,7 +39,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     address_state: '123',
     address_zip_code: '123',
     address_phone_number: '123',
-    payment_method: ::Configuration[:currency_charge]
+    payment_method: 'paypal_express'
   }) }
 
   describe "GET review" do
