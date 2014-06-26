@@ -9,21 +9,6 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
   def review
   end
 
-  def ipn
-    if contribution && notification.acknowledge && (contribution.payment_method == 'PayPal' || contribution.payment_method.nil?)
-      process_paypal_message params
-      contribution.update_attributes({
-        :payment_service_fee => params['mc_fee'],
-        :payer_email => params['payer_email']
-      })
-    else
-      return render status: 500, nothing: true
-    end
-    return render status: 200, nothing: true
-  rescue Exception => e
-    return render status: 500, text: e.inspect
-  end
-
   def pay
     begin
       description = t('paypal_description',
@@ -84,12 +69,20 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
     redirect_to main_app.new_project_contribution_path(resource.project)
   end
 
-  def contribution
-    @contribution ||= if params['id']
-                  PaymentEngine.find_payment(id: params['id'])
-                elsif params['txn_id']
-                  PaymentEngine.find_payment(payment_id: params['txn_id']) || (params['parent_txn_id'] && PaymentEngine.find_payment(payment_id: params['parent_txn_id']))
-                end
+  def ipn
+    if resource && notification.acknowledge &&
+      (resource.payment_method == CatarsePaypalExpress::Interface.new.name || resource.payment_method.nil?)
+      process_paypal_message params
+      resource.update_attributes({
+        :payment_service_fee => params['mc_fee'],
+        :payer_email => params['payer_email']
+      })
+    else
+      return render status: 500, nothing: true
+    end
+    return render status: 200, nothing: true
+  rescue Exception => e
+    return render status: 500, text: e.inspect
   end
 
   def process_paypal_message(data)

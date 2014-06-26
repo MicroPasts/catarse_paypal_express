@@ -222,83 +222,152 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
   end
 
-  describe "POST ipn" do
-    let(:ipn_data){ {"mc_gross"=>"50.00", "protection_eligibility"=>"Eligible", "address_status"=>"unconfirmed", "payer_id"=>"S7Q8X88KMGX5S", "tax"=>"0.00", "address_street"=>"Rua Tatui, 40 ap 81\r\nJardins", "payment_date"=>"09:03:01 Nov 05, 2012 PST", "payment_status"=>"Completed", "charset"=>"windows-1252", "address_zip"=>"01409-010", "first_name"=>"Paula", "mc_fee"=>"3.30", "address_country_code"=>"BR", "address_name"=>"Paula Rizzo", "notify_version"=>"3.7", "custom"=>"", "payer_status"=>"verified", "address_country"=>"Brazil", "address_city"=>"Sao Paulo", "quantity"=>"1", "verify_sign"=>"ALBe4QrXe2sJhpq1rIN8JxSbK4RZA.Kfc5JlI9Jk4N1VQVTH5hPYOi2S", "payer_email"=>"paula.rizzo@gmail.com", "txn_id"=>"3R811766V4891372K", "payment_type"=>"instant", "last_name"=>"Rizzo", "address_state"=>"SP", "receiver_email"=>"financeiro@catarse.me", "payment_fee"=>"", "receiver_id"=>"BVUB4EVC7YCWL", "txn_type"=>"express_checkout", "item_name"=>"Back project", "mc_currency"=>"BRL", "item_number"=>"", "residence_country"=>"BR", "handling_amount"=>"0.00", "transaction_subject"=>"Back project", "payment_gross"=>"", "shipping"=>"0.00", "ipn_track_id"=>"5865649c8c27"} }
-    let(:contribution){ double(:contribution, :payment_id => ipn_data['txn_id'], :payment_method => 'PayPal' ) }
+  describe 'POST ipn' do
+    let(:ipn_data) do
+      {
+        "mc_gross" => "50.00",
+        "protection_eligibility" => "Eligible",
+        "address_status" => "unconfirmed",
+        "payer_id" => "S7Q8X88KMGX5S",
+        "tax" => "0.00",
+        "address_street" => "Rua Tatui, 40 ap 81\r\nJardins",
+        "payment_date" => "09:03:01 Nov 05, 2012 PST",
+        "payment_status" => "Completed",
+        "charset" => "windows-1252",
+        "address_zip" => "01409-010",
+        "first_name" => "Paula",
+        "mc_fee" => "3.30",
+        "address_country_code" => "BR",
+        "address_name" => "Paula Rizzo",
+        "notify_version" => "3.7",
+        "custom" => "",
+        "payer_status" => "verified",
+        "address_country" => "Brazil",
+        "address_city" => "Sao Paulo",
+        "quantity" => "1",
+        "verify_sign" => "ALBe4QrXe2sJhpq1rIN8JxSbK4RZA.Kfc5JlI9Jk4N1VQVTH5hPYOi2S",
+        "payer_email" => "paula.rizzo@gmail.com",
+        "txn_id" => "3R811766V4891372K",
+        "payment_type" => "instant",
+        "last_name" => "Rizzo",
+        "address_state" => "SP",
+        "receiver_email" => "financeiro@catarse.me",
+        "payment_fee" => "",
+        "receiver_id" => "BVUB4EVC7YCWL",
+        "txn_type" => "express_checkout",
+        "item_name" => "Back project",
+        "mc_currency" => "BRL",
+        "item_number" => "",
+        "residence_country" => "BR",
+        "handling_amount" => "0.00",
+        "transaction_subject" => "Back project",
+        "payment_gross" => "",
+        "shipping" => "0.00",
+        "ipn_track_id" => "5865649c8c27"
+      }
+    end
+    let(:contribution) do
+      double(:contribution,
+        payment_id:     ipn_data['txn_id'],
+        payment_method: 'paypal_express'
+      )
+    end
     let(:notification) { double }
 
     before do
       controller.stub(:notification).and_return(notification)
     end
 
-    context "when payment_method is MoIP" do
+    context 'when is a valid ipn data' do
       before do
-        params = ipn_data.merge({ use_route: 'catarse_paypal_express' })
+        allow(contribution).to receive(:update_attributes)
+        allow(controller).to   receive(:process_paypal_message)
+        allow(notification).to receive(:acknowledge).and_return(true)
+      end
+      let(:params) { ipn_data.merge(use_route: 'catarse_paypal_express') }
 
-        notification.stub(:acknowledge).and_return(true)
-        contribution.stub(:payment_method).and_return('MoIP')
-
-        contribution.should_not_receive(:update_attributes)
-        controller.should_not_receive(:process_paypal_message)
-
-        notification.should_receive(:acknowledge)
-
+      it 'validates notification' do
+        expect(notification).to receive(:acknowledge)
         post :ipn, params
       end
 
-      its(:status){ should == 500 }
-      its(:body){ should == ' ' }
-    end
-
-    context "when is a valid ipn data" do
-      before do
-        params = ipn_data.merge({ use_route: 'catarse_paypal_express' })
-
-        notification.stub(:acknowledge).and_return(true)
-
-        contribution.should_receive(:update_attributes).with({
-          payment_service_fee: ipn_data['mc_fee'],
-          payer_email: ipn_data['payer_email']
-        })
-        controller.should_receive(:process_paypal_message).with(ipn_data.merge({
-          "controller"=>"catarse_paypal_express/paypal_express",
-          "action"=>"ipn"
-        }))
-
-        notification.should_receive(:acknowledge)
-
+      it 'fetches more information about transaction' do
+        expect(controller).to receive(:process_paypal_message).
+          with(ipn_data.merge(
+          "controller" => "catarse_paypal_express/paypal_express",
+          "action"     => "ipn"
+        ))
         post :ipn, params
       end
 
-      its(:status){ should == 200 }
-      its(:body){ should == ' ' }
+      it 'updates contribution with new information' do
+        expect(contribution).to receive(:update_attributes).with(
+          payer_email:         ipn_data['payer_email'],
+          payment_service_fee: ipn_data['mc_fee']
+        )
+        post :ipn, params
+      end
+
+      it 'responds with 200 HTTP status' do
+        post :ipn, params
+        expect(subject.status).to eql(200)
+      end
+
+      it 'renders empty body' do
+        post :ipn, params
+        expect(subject.body.strip).to be_empty
+      end
     end
 
     context "when is not valid ipn data" do
-      let(:ipn_data){ {"mc_gross"=>"50.00", "payment_status" => 'confirmed', "txn_id" => "3R811766V4891372K", 'payer_email' => 'fake@email.com', 'mc_fee' => '0.0'} }
-
       before do
-        params = ipn_data.merge({ use_route: 'catarse_paypal_express' })
-
         notification.stub(:acknowledge).and_return(false)
+      end
+      let(:ipn_data) do
+        {
+          "mc_gross" => "50.00",
+          "payment_status" => 'confirmed',
+          "txn_id" => "3R811766V4891372K",
+          'payer_email' => 'fake@email.com',
+          'mc_fee' => '0.0'
+        }
+      end
+      let(:params) do
+        ipn_data.merge(use_route: 'catarse_paypal_express')
+      end
 
-        contribution.should_receive(:update_attributes).with({
-          payment_service_fee: ipn_data['mc_fee'],
-          payer_email: ipn_data['payer_email']
-        }).never
-
-        controller.should_receive(:process_paypal_message).with(ipn_data.merge({
-          "controller"=>"catarse_paypal_express/paypal_express",
-          "action"=>"ipn"
-        })).never
-
-        notification.should_receive(:acknowledge)
-
+      it 'validates notification' do
+        expect(notification).to receive(:acknowledge)
         post :ipn, params
       end
 
-      its(:status){ should == 500 }
-      its(:body){ should == ' ' }
+      it 'skips fetching for more information about transaction' do
+        expect(controller).to_not receive(:process_paypal_message).with(
+          ipn_data.merge(
+            "controller" => "catarse_paypal_express/paypal_express",
+            "action" => "ipn"
+          )
+        )
+        post :ipn, params
+      end
+
+      it 'skips any update to contribution with received data' do
+        expect(contribution).to_not receive(:update_attributes).with(
+          payer_email:         ipn_data['payer_email'],
+          payment_service_fee: ipn_data['mc_fee']
+        )
+        post :ipn, params
+      end
+
+      it 'responds with 500 HTTP status' do
+        post :ipn, params
+        expect(subject.status).to eql(500)
+      end
+
+      it 'renders empty body' do
+        post :ipn, params
+        expect(subject.body.strip).to be_empty
+      end
     end
   end
 
