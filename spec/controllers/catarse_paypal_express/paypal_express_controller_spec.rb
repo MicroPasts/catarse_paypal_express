@@ -5,7 +5,6 @@ require 'spec_helper'
 describe CatarsePaypalExpress::PaypalExpressController do
   SCOPE = CatarsePaypalExpress::PaypalExpressController::SCOPE
   before do
-    PaymentEngine.stub(:find_payment).and_return(contribution)
     PaymentEngine.stub(:create_payment_notification)
     controller.stub(:main_app).and_return(main_app)
     controller.stub(:current_user).and_return(current_user)
@@ -406,39 +405,53 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
   end
 
-  describe "#resource" do
-    subject{ controller.resource }
-    context "when we have an id" do
+  describe '#resource' do
+    subject { controller }
+    before do
+      allow(controller).to receive(:params).and_return(params)
+    end
+
+    context 'when a contribution id is given' do
       before do
-        controller.stub(:params).and_return({'contribution_id' => '1'})
-        PaymentEngine.should_receive(:find_payment).with(id: '1').and_return(contribution)
       end
-      it{ should == contribution }
+      let(:params) { { contribution_id: '1' } }
+
+      it 'delegates to PaymentEngine.find_payment passing contribution_id' do
+        allow(PaymentEngine).to receive(:find_payment).with(contribution_id: '1').and_return(contribution)
+        expect(subject.resource).to eql(contribution)
+      end
     end
 
     context "when we have an txn_id that does not return contribution but a parent_txn_id that does" do
       before do
-        controller.stub(:params).and_return({'txn_id' => '1', 'parent_txn_id' => '2'})
-        PaymentEngine.should_receive(:find_payment).with(payment_id: '1').and_return(nil)
-        PaymentEngine.should_receive(:find_payment).with(payment_id: '2').and_return(contribution)
+        allow(PaymentEngine).to receive(:find_payment).with(payment_id: '1').and_return(nil)
       end
-      it{ should == contribution }
+      let(:params) { { 'txn_id' => '1', 'parent_txn_id' => '2' } }
+
+      it 'delegates to PaymentEngine.find_payment passing parent_txn_id' do
+        allow(PaymentEngine).to receive(:find_payment).with(payment_id: '2').and_return(contribution)
+        expect(subject.resource).to eql(contribution)
+      end
     end
 
-    context "when we do not have any id" do
+    context "when we do not have any kind of id" do
       before do
-        controller.stub(:params).and_return({})
-        PaymentEngine.should_not_receive(:find_payment)
+        allow(controller).to receive(:resource).and_call_original
       end
-      it{ should be_nil }
+      let(:params) { {} }
+
+      it 'returns nil' do
+        expect(subject.resource).to be_nil
+      end
     end
 
     context "when we have an txn_id" do
-      before do
-        controller.stub(:params).and_return({'txn_id' => '1'})
-        PaymentEngine.should_receive(:find_payment).with(payment_id: '1').and_return(contribution)
+      let(:params) { { 'txn_id' => '1' } }
+
+      it 'delegates to PaymentEngine.find_payment passing txn_id' do
+        allow(PaymentEngine).to receive(:find_payment).with(payment_id: '1').and_return(contribution)
+        expect(subject.resource).to eql(contribution)
       end
-      it{ should == contribution }
     end
   end
 

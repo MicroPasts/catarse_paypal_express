@@ -114,14 +114,15 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
   end
 
   def resource
-    @resource ||= if params['txn_id']
-        PaymentEngine.find_payment(payment_id: params['txn_id']) ||
-          (params['parent_txn_id'] && PaymentEngine.find_payment(payment_id: params['parent_txn_id']))
+    @resource ||= begin
+      payment_id = params.slice(:txn_id, :parent_txn_id).compact.first.try(:last)
+      filter     = if payment_id.present?
+        { payment_id: payment_id }
       else
-        # :contribution_id => Contribution
-        resource_class = resource_params.keys.first[0..-4].camelize.constantize
-        resource_class.find(resource_params.values.first)
+        resource_params
       end
+      PaymentEngine.find_payment(filter)
+    end
   end
 
   def resource_params

@@ -20,6 +20,7 @@ end
 class PaymentEngine
   class << self
     def create_payment_notification(*); end
+    def find_payment(*);                end
     def register(*);                    end
   end
 
