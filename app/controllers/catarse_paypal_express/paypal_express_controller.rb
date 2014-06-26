@@ -56,21 +56,25 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
 
   def success
     begin
-      purchase = gateway.purchase(contribution.price_in_cents, {
-        ip: request.remote_ip,
-        token: contribution.payment_token,
-        payer_id: params[:PayerID]
+      purchase = gateway.purchase(resource.price_in_cents, {
+        ip:       request.remote_ip,
+        payer_id: params[:PayerID],
+        token:    resource.payment_token
       })
 
       # we must get the deatils after the purchase in order to get the transaction_id
-      process_paypal_message purchase.params
-      resource.update_attributes payment_id: purchase.params['transaction_id'] if purchase.params['transaction_id']
+      process_paypal_message(purchase.params)
+      if purchase.params['transaction_id']
+        resource.update_attributes(
+          payment_id: purchase.params['transaction_id']
+        )
+      end
 
-      flash[:success] = t('success', scope: SCOPE)
+      flash.notice = t('success', scope: SCOPE)
       redirect_to main_app.project_contribution_path(project_id: resource.project, id: resource)
     rescue Exception => e
       Rails.logger.info "-----> #{e.inspect}"
-      flash[:failure] = t('paypal_error', scope: SCOPE)
+      flash.alert = t('paypal_error', scope: SCOPE)
       return redirect_to main_app.new_project_contribution_path(resource.project)
     end
   end
@@ -90,7 +94,9 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
 
   def process_paypal_message(data)
     extra_data = (data['charset'] ? JSON.parse(data.to_json.force_encoding(data['charset']).encode('utf-8')) : data)
-    PaymentEngine.create_payment_notification contribution_id: contribution.id, extra_data: extra_data
+    PaymentEngine.create_payment_notification(
+      resource_params.merge(extra_data: extra_data)
+    )
 
     if data["checkout_status"] == 'PaymentActionCompleted'
       resource.confirm!
