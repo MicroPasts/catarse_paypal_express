@@ -371,32 +371,38 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
   end
 
-  describe "#gateway" do
+  describe '#gateway' do
+    subject { controller.gateway }
     before do
-      controller.stub(:gateway).and_call_original
-      PaymentEngine.stub(:configuration).and_return(paypal_config)
+      allow(controller).to    receive(:gateway).and_call_original
+      allow(PaymentEngine).to receive(:configuration).and_return(paypal_config)
     end
-    subject{ controller.gateway }
+
     context "when we have the paypal configuration" do
       let(:paypal_config) do
-        { paypal_username: 'username', paypal_password: 'pass', paypal_signature: 'signature' }
+        {
+          paypal_password:  'pass',
+          paypal_signature: 'signature',
+          paypal_username:  'username'
+        }
       end
-      before do
-        ActiveMerchant::Billing::PaypalExpressGateway.should_receive(:new).with({
-          login: PaymentEngine.configuration[:paypal_username],
-          password: PaymentEngine.configuration[:paypal_password],
+
+      it 'returns an instance of PaypalExpressGateway' do
+        allow(ActiveMerchant::Billing::PaypalExpressGateway).to receive(:new).with(
+          login:     PaymentEngine.configuration[:paypal_username],
+          password:  PaymentEngine.configuration[:paypal_password],
           signature: PaymentEngine.configuration[:paypal_signature]
-        }).and_return('gateway instance')
+        ).and_return('gateway instance')
+        expect(subject).to eql('gateway instance')
       end
-      it{ should == 'gateway instance' }
     end
 
     context "when we do not have the paypal configuration" do
-      let(:paypal_config){ {} }
-      before do
-        ActiveMerchant::Billing::PaypalExpressGateway.should_not_receive(:new)
+      let(:paypal_config) { {} }
+
+      it 'returns nil' do
+        expect(subject).to be_nil
       end
-      it{ should be_nil }
     end
   end
 
