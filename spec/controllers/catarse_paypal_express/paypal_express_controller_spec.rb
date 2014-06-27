@@ -57,7 +57,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
 
       it 'should assign flash error' do
         post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
-        expect(controller.flash[:failure]).to eql(I18n.t('paypal_error', scope: SCOPE))
+        expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: SCOPE))
       end
 
       it 'redirects to new contribution page' do
@@ -455,68 +455,129 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
   end
 
-  describe "#process_paypal_message" do
-    subject{ controller.process_paypal_message data }
-    let(:data){ {'test_data' => true} }
+  describe '#process_paypal_message' do
+    subject { controller.process_paypal_message data }
     before do
-      controller.stub(:params).and_return({'contribution_id' => 1})
-      PaymentEngine.should_receive(:create_payment_notification).with(contribution_id: contribution.id, extra_data: data)
+      controller.stub(:params).and_return(contribution_id: 1)
+      expect(PaymentEngine).to receive(:create_payment_notification).
+        with(contribution_id: contribution.id, extra_data: data)
     end
+    let(:data) { {'test_data' => true} }
 
     context "when data['checkout_status'] == 'PaymentActionCompleted'" do
       let(:data){ {'checkout_status' => 'PaymentActionCompleted'} }
       before do
-        contribution.should_receive(:confirm!)
+        expect(contribution).to receive(:confirm!)
       end
-      it("should call confirm"){ subject }
+
+      it 'should call confirm' do
+        subject
+      end
     end
 
     context "some real data with revert op" do
-      let(:data){ { "mc_gross" => "-150.00","protection_eligibility" => "Eligible","payer_id" => "4DK6S6Q75Z5YS","address_street" => "AV. SAO CARLOS, 2205 - conj 501/502 Centro","payment_date" => "09:55:14 Jun 26, 2013 PDT","payment_status" => "Refunded","charset" => "utf-8","address_zip" => "13560-900","first_name" => "Marcius","mc_fee" => "-8.70","address_country_code" => "BR","address_name" => "Marcius Milori","notify_version" => "3.7","reason_code" => "refund","custom" => "","address_country" => "Brazil","address_city" => "São Carlos","verify_sign" => "AbedXpvDaliC7hltYoQrebkEQft7A.y6bRnDvjPIIB1Mct8-aDGcHkcV","payer_email" => "milorimarcius@gmail.com","parent_txn_id" => "78T862320S496750Y","txn_id" => "9RP43514H84299332","payment_type" => "instant","last_name" => "Milori","address_state" => "São Paulo","receiver_email" => "financeiro@catarse.me","payment_fee" => "","receiver_id" => "BVUB4EVC7YCWL","item_name" => "Apoio para o projeto A Caça (La Chasse) no valor de R$ 150","mc_currency" => "BRL","item_number" => "","residence_country" => "BR","handling_amount" => "0.00","transaction_subject" => "Apoio para o projeto A Caça (La Chasse) no valor de R$ 150","payment_gross" => "","shipping" => "0.00","ipn_track_id" => "18c487e6abca4" } }
       before do
-        contribution.should_receive(:refund!)
+        expect(contribution).to receive(:refund!)
       end
-      it("should call refund"){ subject }
+      let(:data) do
+        {
+          "mc_gross" => "-150.00",
+          "protection_eligibility" => "Eligible",
+          "payer_id" => "4DK6S6Q75Z5YS",
+          "address_street" => "AV. SAO CARLOS, 2205 - conj 501/502 Centro",
+          "payment_date" => "09:55:14 Jun 26, 2013 PDT",
+          "payment_status" => "Refunded",
+          "charset" => "utf-8",
+          "address_zip" => "13560-900",
+          "first_name" => "Marcius",
+          "mc_fee" => "-8.70",
+          "address_country_code" => "BR",
+          "address_name" => "Marcius Milori",
+          "notify_version" => "3.7",
+          "reason_code" => "refund",
+          "custom" => "",
+          "address_country" => "Brazil",
+          "address_city" => "São Carlos",
+          "verify_sign" => "AbedXpvDaliC7hltYoQrebkEQft7A.y6bRnDvjPIIB1Mct8-aDGcHkcV",
+          "payer_email" => "milorimarcius@gmail.com",
+          "parent_txn_id" => "78T862320S496750Y",
+          "txn_id" => "9RP43514H84299332",
+          "payment_type" => "instant",
+          "last_name" => "Milori",
+          "address_state" => "São Paulo",
+          "receiver_email" => "financeiro@catarse.me",
+          "payment_fee" => "",
+          "receiver_id" => "BVUB4EVC7YCWL",
+          "item_name" => "Apoio para o projeto A Caça (La Chasse) no valor de R$ 150",
+          "mc_currency" => "BRL",
+          "item_number" => "",
+          "residence_country" => "BR",
+          "handling_amount" => "0.00",
+          "transaction_subject" => "Apoio para o projeto A Caça (La Chasse) no valor de R$ 150",
+          "payment_gross" => "",
+          "shipping" => "0.00",
+          "ipn_track_id" => "18c487e6abca4"
+        }
+      end
+
+      it 'should call refund' do
+        subject
+      end
     end
 
     context "when it's a refund message" do
-      let(:data){ {'payment_status' => 'refunded'} }
       before do
-        contribution.should_receive(:refund!)
+        expect(contribution).to receive(:refund!)
       end
-      it("should call refund"){ subject }
+      let(:data) { { 'payment_status' => 'refunded' } }
+
+      it 'should call refund' do
+        subject
+      end
     end
 
     context "when it's a completed message" do
-      let(:data){ {'payment_status' => 'Completed'} }
       before do
-        contribution.should_receive(:confirm!)
+        expect(contribution).to receive(:confirm!)
       end
-      it("should call confirm"){ subject }
+      let(:data) { { 'payment_status' => 'Completed' } }
+
+      it 'should call confirm' do
+        subject
+      end
     end
 
     context "when it's a cancelation message" do
-      let(:data){ {'payment_status' => 'canceled_reversal'} }
       before do
-        contribution.should_receive(:cancel!)
+        expect(contribution).to receive(:cancel!)
       end
-      it("should call cancel"){ subject }
+      let(:data) { { 'payment_status' => 'canceled_reversal' } }
+
+      it 'should call cancel' do
+        subject
+      end
     end
 
     context "when it's a payment expired message" do
-      let(:data){ {'payment_status' => 'expired'} }
       before do
-        contribution.should_receive(:pendent!)
+        expect(contribution).to receive(:pendent!)
       end
-      it("should call pendent"){ subject }
+      let(:data) { { 'payment_status' => 'expired' } }
+
+      it 'should call pendent' do
+        subject
+      end
     end
 
     context "all other values of payment_status" do
-      let(:data){ {'payment_status' => 'other'} }
       before do
-        contribution.should_receive(:waiting!)
+        expect(contribution).to receive(:wait_confirmation!)
       end
-      it("should call waiting"){ subject }
+      let(:data) { { 'payment_status' => 'other' } }
+
+      it 'should call waiting' do
+        subject
+      end
     end
   end
 end

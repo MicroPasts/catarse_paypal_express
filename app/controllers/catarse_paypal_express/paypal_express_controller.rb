@@ -34,7 +34,7 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
       redirect_to gateway.redirect_url_for(response.token)
     rescue Exception => e
       Rails.logger.info "-----> #{e.inspect}"
-      flash[:failure] = t('paypal_error', scope: SCOPE)
+      flash.alert = t('paypal_error', scope: SCOPE)
       return redirect_to main_app.new_project_contribution_path(resource.project)
     end
   end
@@ -86,15 +86,19 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
   end
 
   def process_paypal_message(data)
-    extra_data = (data['charset'] ? JSON.parse(data.to_json.force_encoding(data['charset']).encode('utf-8')) : data)
+    extra_data = if data['charset']
+      JSON.parse(data.to_json.force_encoding(data['charset']).encode('utf-8'))
+    else
+      data
+    end
     PaymentEngine.create_payment_notification(
       resource_params.merge(extra_data: extra_data)
     )
 
-    if data["checkout_status"] == 'PaymentActionCompleted'
+    if data['checkout_status'] == 'PaymentActionCompleted'
       resource.confirm!
-    elsif data["payment_status"]
-      case data["payment_status"].downcase
+    elsif data['payment_status']
+      case data['payment_status'].downcase
       when 'completed'
         resource.confirm!
       when 'refunded'
