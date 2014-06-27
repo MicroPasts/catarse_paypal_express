@@ -1,6 +1,10 @@
 pt:
   projects:
     contributions:
+      edit:
+        payment-method:
+          paypal_express:
+            title: 'PayPal'
       refund:
         error: 'OOPS! Ocorreu um erro ao tentar enviar o pedido de reembolso.'
         success: 'Pedido de reembolso enviado com sucesso!'

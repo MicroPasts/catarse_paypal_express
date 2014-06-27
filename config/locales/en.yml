@@ -1,6 +1,10 @@
 en:
   projects:
     contributions:
+      edit:
+        payment-method:
+          paypal_express:
+            title: 'PayPal'
       refund:
         error: 'OOPS! An error occured while asking for the refund.'
         success: 'Refund requested successfuly.'
