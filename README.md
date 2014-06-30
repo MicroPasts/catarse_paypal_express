@@ -19,6 +19,7 @@ you need to mount it in a route and configure some keys.
 Inside your Rails console (accessible via `bundle exec rails console`),
 create appropriate settings:
 
+    Configuration.create!(name: "currency_charge", value: "GBP")
     Configuration.create!(name: "paypal_username", value: "USERNAME")
     Configuration.create!(name: "paypal_password", value: "PASSWORD")
     Configuration.create!(name: "paypal_signature", value: "SIGNATURE")
