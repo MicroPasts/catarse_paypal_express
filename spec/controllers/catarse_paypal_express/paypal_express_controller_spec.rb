@@ -82,15 +82,43 @@ describe CatarsePaypalExpress::PaypalExpressController do
 
       it 'setups purchase using payment service' do
         expect(gateway).to receive(:setup_purchase).with(
-          contribution.price_in_cents,
-          ip:                request.remote_ip,
-          return_url:        'http://test.host/catarse_paypal_express/paypal_express/success?contribution_id=1',
-          cancel_return_url: 'http://test.host/catarse_paypal_express/paypal_express/cancel?contribution_id=1',
-          currency_code:     ::Configuration[:currency_charge],
-          description:       I18n.t('paypal_description', scope: SCOPE, project_name: contribution.project.name, value: contribution.display_value),
-          notify_url:        'http://test.host/catarse_paypal_express/payment/paypal_express/ipn'
+          anything,
+          hash_including(
+            :cancel_return_url,
+            :currency_code,
+            :description,
+            :ip,
+            :notify_url,
+            :return_url,
+          )
         ).and_return(success_response)
         post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+      end
+
+      context 'when user is paying fees' do
+        it 'charge calculator\'s gross_amount in the service' do
+          allow_any_instance_of(
+            CatarsePaypalExpress::TransactionAdditionalFeeCalculator
+          ).to receive(:gross_amount).and_return(42.0)
+          expect(gateway).to receive(:setup_purchase).with(
+            4200,
+            anything
+          ).and_return(success_response)
+          post :pay, contribution_id: contribution.id, pay_fee: '1', locale: 'en', use_route: 'catarse_paypal_express'
+        end
+      end
+
+      context 'when user is not paying fees' do
+        it 'charge calculator\'s gross_amount in the service' do
+          allow_any_instance_of(
+            CatarsePaypalExpress::TransactionInclusiveFeeCalculator
+          ).to receive(:gross_amount).and_return(42.0)
+          expect(gateway).to receive(:setup_purchase).with(
+            4200,
+            anything
+          ).and_return(success_response)
+          post :pay, contribution_id: contribution.id, pay_fee: '0', locale: 'en', use_route: 'catarse_paypal_express'
+        end
       end
 
       it 'updates contribution with payment information' do
