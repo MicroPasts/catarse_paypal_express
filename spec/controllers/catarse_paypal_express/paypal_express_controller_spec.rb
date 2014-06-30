@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 describe CatarsePaypalExpress::PaypalExpressController do
-  SCOPE = CatarsePaypalExpress::PaypalExpressController::SCOPE
+  I18N_SCOPE = CatarsePaypalExpress::PaypalExpressController::I18N_SCOPE
   before do
     PaymentEngine.stub(:create_payment_notification)
     controller.stub(:main_app).and_return(main_app)
@@ -57,7 +57,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
 
       it 'should assign flash error' do
         post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
-        expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: SCOPE))
+        expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: I18N_SCOPE))
       end
 
       it 'redirects to new contribution page' do
@@ -200,7 +200,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
 
       it 'should assign flash message' do
         get :success, params
-        expect(flash[:notice]).to eql(I18n.t('success', scope: SCOPE))
+        expect(flash[:notice]).to eql(I18n.t('success', scope: I18N_SCOPE))
       end
     end
 
@@ -211,7 +211,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
 
       it 'should assign flash error' do
         get :success, params
-        expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: SCOPE))
+        expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: I18N_SCOPE))
       end
 
       it 'redirects to new contribution url' do
@@ -229,7 +229,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
 
     it 'should show for user the flash message' do
       get :cancel, id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
-      expect(flash[:alert]).to eql(I18n.t('paypal_cancel', scope: SCOPE))
+      expect(flash[:alert]).to eql(I18n.t('paypal_cancel', scope: I18N_SCOPE))
     end
 
     it 'redirects to new contribution url' do

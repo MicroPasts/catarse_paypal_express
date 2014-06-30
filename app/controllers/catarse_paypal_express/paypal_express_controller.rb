@@ -2,9 +2,7 @@ module CatarsePaypalExpress
   class PaypalExpressController < ApplicationController
     include ActiveMerchant::Billing::Integrations
 
-    skip_before_filter :force_http
-    SCOPE = "projects.contributions.checkout"
-    layout :false
+    I18N_SCOPE = 'projects.contributions.checkout'
     helper_method :resource_params
 
     def review
@@ -13,7 +11,7 @@ module CatarsePaypalExpress
     def pay
       begin
         description = t('paypal_description',
-          scope:        SCOPE,
+          scope:        I18N_SCOPE,
           project_name: resource.project.name,
           value:        "#{fee_calculator.gross_amount} #{::Configuration[:currency_charge]}"
         )
@@ -35,7 +33,7 @@ module CatarsePaypalExpress
         redirect_to gateway.redirect_url_for(response.token)
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
-        flash.alert = t('paypal_error', scope: SCOPE)
+        flash.alert = t('paypal_error', scope: I18N_SCOPE)
         return redirect_to main_app.new_project_contribution_path(resource.project)
       end
     end
@@ -56,17 +54,17 @@ module CatarsePaypalExpress
           )
         end
 
-        flash.notice = t('success', scope: SCOPE)
+        flash.notice = t('success', scope: I18N_SCOPE)
         redirect_to main_app.project_contribution_path(project_id: resource.project, id: resource)
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
-        flash.alert = t('paypal_error', scope: SCOPE)
+        flash.alert = t('paypal_error', scope: I18N_SCOPE)
         return redirect_to main_app.new_project_contribution_path(resource.project)
       end
     end
 
     def cancel
-      flash.alert = t('paypal_cancel', scope: SCOPE)
+      flash.alert = t('paypal_cancel', scope: I18N_SCOPE)
       redirect_to main_app.new_project_contribution_path(resource.project)
     end
 
