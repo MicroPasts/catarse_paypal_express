@@ -125,12 +125,12 @@ class CatarsePaypalExpress::PaypalExpressController < ApplicationController
       else
         resource_params
       end
-      PaymentEngine.find_payment(filter)
+      PaymentEngine.find_payment(filter.with_indifferent_access)
     end
   end
 
   def resource_params
-    @resource_param ||= Hash[*params.slice(:contribution_id, :match_id).first]
+    @resource_params ||= Hash[*params.slice(:contribution_id, :match_id).first]
   end
 
   protected
