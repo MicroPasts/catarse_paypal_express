@@ -181,17 +181,6 @@ describe CatarsePaypalExpress::PaypalExpressController do
         allow(gateway).to receive(:purchase).and_raise('error')
       end
 
-      it 'fetches more information about transaction' do
-        expect(controller).to receive(:process_paypal_message).
-          with(success_details.params)
-        get :success, params
-      end
-
-      it 'defines the payment_id in the contribution' do
-        expect(contribution).to receive(:update_attributes).with(payment_id: '12345')
-        get :success, params
-      end
-
       it 'should assign flash error' do
         get :success, params
         expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: SCOPE))
