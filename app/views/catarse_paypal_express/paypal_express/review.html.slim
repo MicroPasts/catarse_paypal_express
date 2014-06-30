@@ -1,8 +1,10 @@
-= javascript_include_tag 'catarse_paypal_express'
-
-h3= t('projects.contributions.review.international.section_title')
+strong#payment_section_title = t(:section_title, scope: 'projects.contributions.review')
 
 #catarse_paypal_express_form
   = simple_form_for :payment, url: pay_path(resource_params) do |f|
-    .large-12.columns
-      = submit_tag t('projects.contributions.review.international.button'), :class => 'btn btn-primary btn-large'
+    section
+      .row
+        .large-6.columns.submit
+          = f.button :submit,
+            t(:confirm, scope: 'projects.contributions.review'),
+            data: { disable_with: t(:processing, scope: 'projects.contributions.review') }
