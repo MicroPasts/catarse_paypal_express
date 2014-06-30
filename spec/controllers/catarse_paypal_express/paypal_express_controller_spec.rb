@@ -3,6 +3,8 @@
 require 'spec_helper'
 
 describe CatarsePaypalExpress::PaypalExpressController do
+  routes { CatarsePaypalExpress::Engine.routes }
+
   I18N_SCOPE = CatarsePaypalExpress::PaypalExpressController::I18N_SCOPE
   before do
     PaymentEngine.stub(:create_payment_notification)
@@ -43,7 +45,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
 
   describe "GET review" do
     before do
-      get :review, id: contribution.id, use_route: 'catarse_paypal_express'
+      get :review, id: contribution.id
     end
     it{ should render_template(:review) }
   end
@@ -56,12 +58,12 @@ describe CatarsePaypalExpress::PaypalExpressController do
       end
 
       it 'should assign flash error' do
-        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        post :pay, contribution_id: contribution.id, locale: 'en'
         expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: I18N_SCOPE))
       end
 
       it 'redirects to new contribution page' do
-        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        post :pay, contribution_id: contribution.id, locale: 'en'
         expect(response).to redirect_to('error url')
       end
     end
@@ -92,7 +94,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
             :return_url,
           )
         ).and_return(success_response)
-        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        post :pay, contribution_id: contribution.id, locale: 'en'
       end
 
       context 'when user is paying fees' do
@@ -104,7 +106,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
             4200,
             anything
           ).and_return(success_response)
-          post :pay, contribution_id: contribution.id, pay_fee: '1', locale: 'en', use_route: 'catarse_paypal_express'
+          post :pay, contribution_id: contribution.id, pay_fee: '1', locale: 'en'
         end
       end
 
@@ -117,7 +119,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
             4200,
             anything
           ).and_return(success_response)
-          post :pay, contribution_id: contribution.id, pay_fee: '0', locale: 'en', use_route: 'catarse_paypal_express'
+          post :pay, contribution_id: contribution.id, pay_fee: '0', locale: 'en'
         end
       end
 
@@ -126,11 +128,11 @@ describe CatarsePaypalExpress::PaypalExpressController do
           payment_method: 'paypal_express',
           payment_token:  'ABCD'
         )
-        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        post :pay, contribution_id: contribution.id, locale: 'en'
       end
 
       it 'redirects to successful contribution page' do
-        post :pay, contribution_id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+        post :pay, contribution_id: contribution.id, locale: 'en'
         expect(response).to redirect_to('success url')
       end
     end
@@ -228,12 +230,12 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
 
     it 'should show for user the flash message' do
-      get :cancel, id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+      get :cancel, id: contribution.id, locale: 'en'
       expect(flash[:alert]).to eql(I18n.t('paypal_cancel', scope: I18N_SCOPE))
     end
 
     it 'redirects to new contribution url' do
-      get :cancel, id: contribution.id, locale: 'en', use_route: 'catarse_paypal_express'
+      get :cancel, id: contribution.id, locale: 'en'
       expect(response).to redirect_to('create contribution url')
     end
   end
@@ -300,11 +302,10 @@ describe CatarsePaypalExpress::PaypalExpressController do
         allow(controller).to   receive(:process_paypal_message)
         allow(notification).to receive(:acknowledge).and_return(true)
       end
-      let(:params) { ipn_data.merge(use_route: 'catarse_paypal_express') }
 
       it 'validates notification' do
         expect(notification).to receive(:acknowledge)
-        post :ipn, params
+        post :ipn, ipn_data
       end
 
       it 'fetches more information about transaction' do
@@ -313,7 +314,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
           "controller" => "catarse_paypal_express/paypal_express",
           "action"     => "ipn"
         ))
-        post :ipn, params
+        post :ipn, ipn_data
       end
 
       it 'updates contribution with new information' do
@@ -321,16 +322,16 @@ describe CatarsePaypalExpress::PaypalExpressController do
           payer_email:         ipn_data['payer_email'],
           payment_service_fee: ipn_data['mc_fee']
         )
-        post :ipn, params
+        post :ipn, ipn_data
       end
 
       it 'responds with 200 HTTP status' do
-        post :ipn, params
+        post :ipn, ipn_data
         expect(subject.status).to eql(200)
       end
 
       it 'renders empty body' do
-        post :ipn, params
+        post :ipn, ipn_data
         expect(subject.body.strip).to be_empty
       end
     end
@@ -348,13 +349,10 @@ describe CatarsePaypalExpress::PaypalExpressController do
           'mc_fee' => '0.0'
         }
       end
-      let(:params) do
-        ipn_data.merge(use_route: 'catarse_paypal_express')
-      end
 
       it 'validates notification' do
         expect(notification).to receive(:acknowledge)
-        post :ipn, params
+        post :ipn, ipn_data
       end
 
       it 'skips fetching for more information about transaction' do
@@ -364,7 +362,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
             "action" => "ipn"
           )
         )
-        post :ipn, params
+        post :ipn, ipn_data
       end
 
       it 'skips any update to contribution with received data' do
@@ -372,16 +370,16 @@ describe CatarsePaypalExpress::PaypalExpressController do
           payer_email:         ipn_data['payer_email'],
           payment_service_fee: ipn_data['mc_fee']
         )
-        post :ipn, params
+        post :ipn, ipn_data
       end
 
       it 'responds with 500 HTTP status' do
-        post :ipn, params
+        post :ipn, ipn_data
         expect(subject.status).to eql(500)
       end
 
       it 'renders empty body' do
-        post :ipn, params
+        post :ipn, ipn_data
         expect(subject.body.strip).to be_empty
       end
     end

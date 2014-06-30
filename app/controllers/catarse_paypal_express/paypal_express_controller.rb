@@ -34,7 +34,7 @@ module CatarsePaypalExpress
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
         flash.alert = t('paypal_error', scope: I18N_SCOPE)
-        return redirect_to main_app.new_project_contribution_path(resource.project)
+        redirect_to main_app.new_project_contribution_path(resource.project)
       end
     end
 
@@ -59,7 +59,7 @@ module CatarsePaypalExpress
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
         flash.alert = t('paypal_error', scope: I18N_SCOPE)
-        return redirect_to main_app.new_project_contribution_path(resource.project)
+        redirect_to main_app.new_project_contribution_path(resource.project)
       end
     end
 
@@ -71,11 +71,12 @@ module CatarsePaypalExpress
     def ipn
       if resource && notification.acknowledge &&
         (resource.payment_method == CatarsePaypalExpress::Interface.new.name || resource.payment_method.nil?)
-        process_paypal_message params
-        resource.update_attributes({
-          :payment_service_fee => params['mc_fee'],
-          :payer_email => params['payer_email']
-        })
+
+        process_paypal_message(params)
+        resource.update_attributes(
+          payer_email:         params[:payer_email],
+          payment_service_fee: params[:mc_fee]
+        )
       else
         return render status: 500, nothing: true
       end
