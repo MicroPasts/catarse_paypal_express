@@ -6,34 +6,6 @@ module CatarsePaypalExpress
       @resource, @attributes = resource, attributes
     end
 
-    def process_paypal_message(data)
-      extra_data = if data['charset']
-        JSON.parse(data.to_json.force_encoding(data['charset']).encode('utf-8'))
-      else
-        data
-      end
-      PaymentEngine.create_payment_notification(
-        attributes.fetch(:resource_id).merge(extra_data: extra_data)
-      )
-
-      if data['checkout_status'] == 'PaymentActionCompleted'
-        resource.confirm!
-      elsif data['payment_status']
-        case data['payment_status'].downcase
-        when 'completed'
-          resource.confirm!
-        when 'refunded'
-          resource.refund!
-        when 'canceled_reversal'
-          resource.cancel!
-        when 'expired', 'denied'
-          resource.pendent!
-        else
-          resource.wait_confirmation! if resource.pending?
-        end
-      end
-    end
-
     def gateway
       @gateway ||= CatarsePaypalExpress::Gateway.instance
     end

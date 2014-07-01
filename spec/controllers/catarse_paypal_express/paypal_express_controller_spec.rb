@@ -161,7 +161,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
 
     it 'completes the payment' do
-      gateway.should_receive(:purchase).with(
+      expect(gateway).to receive(:purchase).with(
         contribution.price_in_cents,
         ip:       request.remote_ip,
         payer_id: params[:PayerID],
@@ -179,8 +179,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
       end
 
       it 'fetches more information about transaction' do
-        expect_any_instance_of(CatarsePaypalExpress::Payment).to receive(:process_paypal_message).
-          with(success_details.params)
+        expect_any_instance_of(CatarsePaypalExpress::Event).to receive(:process)
         get :success, params
       end
 
@@ -292,14 +291,16 @@ describe CatarsePaypalExpress::PaypalExpressController do
     let(:notification) { double }
 
     before do
-      controller.stub(:notification).and_return(notification)
+      allow_any_instance_of(
+        CatarsePaypalExpress::Notification
+      ).to receive(:notification).and_return(notification)
     end
 
     context 'when is a valid ipn data' do
       before do
         allow(contribution).to receive(:update_attributes)
-        allow(controller).to   receive(:process_paypal_message)
         allow(notification).to receive(:acknowledge).and_return(true)
+        allow_any_instance_of(CatarsePaypalExpress::Event).to receive(:process)
       end
 
       it 'validates notification' do
@@ -308,11 +309,9 @@ describe CatarsePaypalExpress::PaypalExpressController do
       end
 
       it 'fetches more information about transaction' do
-        expect(controller).to receive(:process_paypal_message).
-          with(ipn_data.merge(
-          "controller" => "catarse_paypal_express/paypal_express",
-          "action"     => "ipn"
-        ))
+        expect_any_instance_of(
+          CatarsePaypalExpress::Event
+        ).to receive(:process)
         post :ipn, ipn_data
       end
 
@@ -355,12 +354,9 @@ describe CatarsePaypalExpress::PaypalExpressController do
       end
 
       it 'skips fetching for more information about transaction' do
-        expect(controller).to_not receive(:process_paypal_message).with(
-          ipn_data.merge(
-            "controller" => "catarse_paypal_express/paypal_express",
-            "action" => "ipn"
-          )
-        )
+        expect_any_instance_of(
+          CatarsePaypalExpress::Event
+        ).to_not receive(:process)
         post :ipn, ipn_data
       end
 
@@ -430,132 +426,6 @@ describe CatarsePaypalExpress::PaypalExpressController do
       it 'delegates to PaymentEngine.find_payment passing txn_id' do
         allow(PaymentEngine).to receive(:find_payment).with(payment_id: '1').and_return(contribution)
         expect(subject.resource).to eql(contribution)
-      end
-    end
-  end
-
-  describe '#process_paypal_message' do
-    subject { controller.process_paypal_message data }
-    before do
-      controller.stub(:params).and_return(contribution_id: 1)
-      expect(PaymentEngine).to receive(:create_payment_notification).
-        with(contribution_id: contribution.id, extra_data: data)
-    end
-    let(:data) { {'test_data' => true} }
-
-    context "when data['checkout_status'] == 'PaymentActionCompleted'" do
-      let(:data){ {'checkout_status' => 'PaymentActionCompleted'} }
-      before do
-        expect(contribution).to receive(:confirm!)
-      end
-
-      it 'should call confirm' do
-        subject
-      end
-    end
-
-    context "some real data with revert op" do
-      before do
-        expect(contribution).to receive(:refund!)
-      end
-      let(:data) do
-        {
-          "mc_gross" => "-150.00",
-          "protection_eligibility" => "Eligible",
-          "payer_id" => "4DK6S6Q75Z5YS",
-          "address_street" => "AV. SAO CARLOS, 2205 - conj 501/502 Centro",
-          "payment_date" => "09:55:14 Jun 26, 2013 PDT",
-          "payment_status" => "Refunded",
-          "charset" => "utf-8",
-          "address_zip" => "13560-900",
-          "first_name" => "Marcius",
-          "mc_fee" => "-8.70",
-          "address_country_code" => "BR",
-          "address_name" => "Marcius Milori",
-          "notify_version" => "3.7",
-          "reason_code" => "refund",
-          "custom" => "",
-          "address_country" => "Brazil",
-          "address_city" => "São Carlos",
-          "verify_sign" => "AbedXpvDaliC7hltYoQrebkEQft7A.y6bRnDvjPIIB1Mct8-aDGcHkcV",
-          "payer_email" => "milorimarcius@gmail.com",
-          "parent_txn_id" => "78T862320S496750Y",
-          "txn_id" => "9RP43514H84299332",
-          "payment_type" => "instant",
-          "last_name" => "Milori",
-          "address_state" => "São Paulo",
-          "receiver_email" => "financeiro@catarse.me",
-          "payment_fee" => "",
-          "receiver_id" => "BVUB4EVC7YCWL",
-          "item_name" => "Apoio para o projeto A Caça (La Chasse) no valor de R$ 150",
-          "mc_currency" => "BRL",
-          "item_number" => "",
-          "residence_country" => "BR",
-          "handling_amount" => "0.00",
-          "transaction_subject" => "Apoio para o projeto A Caça (La Chasse) no valor de R$ 150",
-          "payment_gross" => "",
-          "shipping" => "0.00",
-          "ipn_track_id" => "18c487e6abca4"
-        }
-      end
-
-      it 'should call refund' do
-        subject
-      end
-    end
-
-    context "when it's a refund message" do
-      before do
-        expect(contribution).to receive(:refund!)
-      end
-      let(:data) { { 'payment_status' => 'refunded' } }
-
-      it 'should call refund' do
-        subject
-      end
-    end
-
-    context "when it's a completed message" do
-      before do
-        expect(contribution).to receive(:confirm!)
-      end
-      let(:data) { { 'payment_status' => 'Completed' } }
-
-      it 'should call confirm' do
-        subject
-      end
-    end
-
-    context "when it's a cancelation message" do
-      before do
-        expect(contribution).to receive(:cancel!)
-      end
-      let(:data) { { 'payment_status' => 'canceled_reversal' } }
-
-      it 'should call cancel' do
-        subject
-      end
-    end
-
-    context "when it's a payment expired message" do
-      before do
-        expect(contribution).to receive(:pendent!)
-      end
-      let(:data) { { 'payment_status' => 'expired' } }
-
-      it 'should call pendent' do
-        subject
-      end
-    end
-
-    context "all other values of payment_status" do
-      before do
-        expect(contribution).to receive(:wait_confirmation!)
-      end
-      let(:data) { { 'payment_status' => 'other' } }
-
-      it 'should call waiting' do
-        subject
       end
     end
   end

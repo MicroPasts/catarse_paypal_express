@@ -53,52 +53,18 @@ module CatarsePaypalExpress
     end
 
     def ipn
-      if resource && notification.acknowledge &&
-        (resource.payment_method == CatarsePaypalExpress::Interface.new.name || resource.payment_method.nil?)
-
-        process_paypal_message(params)
-        resource.update_attributes(
-          payer_email:         params[:payer_email],
-          payment_service_fee: params[:mc_fee]
-        )
+      notification = Notification.new(
+        resource,
+        params.merge(raw: request.raw_post)
+      )
+      if notification.valid?
+        notification.save
       else
         return render status: 500, nothing: true
       end
       return render status: 200, nothing: true
     rescue Exception => e
       return render status: 500, text: e.inspect
-    end
-
-    def process_paypal_message(data)
-      extra_data = if data['charset']
-        JSON.parse(data.to_json.force_encoding(data['charset']).encode('utf-8'))
-      else
-        data
-      end
-      PaymentEngine.create_payment_notification(
-        resource_params.merge(extra_data: extra_data)
-      )
-
-      if data['checkout_status'] == 'PaymentActionCompleted'
-        resource.confirm!
-      elsif data['payment_status']
-        case data['payment_status'].downcase
-        when 'completed'
-          resource.confirm!
-        when 'refunded'
-          resource.refund!
-        when 'canceled_reversal'
-          resource.cancel!
-        when 'expired', 'denied'
-          resource.pendent!
-        else
-          resource.wait_confirmation! if resource.pending?
-        end
-      end
-    end
-
-    def gateway
-      @gateway ||= CatarsePaypalExpress::Gateway.instance
     end
 
     def resource
@@ -113,30 +79,10 @@ module CatarsePaypalExpress
       end
     end
 
+    private
+
     def resource_params
       @resource_params ||= Hash[*params.slice(:contribution_id, :match_id).first]
-    end
-
-    protected
-
-    def notification
-      @notification ||= Paypal::Notification.new(request.raw_post)
-    end
-
-    def amount_in_cents
-      (fee_calculator.gross_amount * 100).round
-    end
-
-    def fee_calculator
-      @fee_calculator and return @fee_calculator
-
-      calculator_class = if ActiveRecord::ConnectionAdapters::Column::TRUE_VALUES.include? params[:pay_fee]
-        TransactionAdditionalFeeCalculator
-      else
-        TransactionInclusiveFeeCalculator
-      end
-
-      @fee_calculator = calculator_class.new(resource.value)
     end
   end
 end

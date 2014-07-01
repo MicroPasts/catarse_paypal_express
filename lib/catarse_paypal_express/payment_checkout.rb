@@ -7,7 +7,7 @@ module CatarsePaypalExpress
         token:    resource.payment_token
       )
 
-      process_paypal_message(purchase.params)
+      Event.new(resource, attributes.merge(purchase.params)).process
       if purchase.params['transaction_id']
         resource.update_attributes(
           payment_id: purchase.params['transaction_id']
