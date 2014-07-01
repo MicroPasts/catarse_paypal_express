@@ -10,27 +10,14 @@ module CatarsePaypalExpress
 
     def pay
       begin
-        description = t('paypal_description',
-          scope:        I18N_SCOPE,
-          project_name: resource.project.name,
-          value:        "#{fee_calculator.gross_amount} #{::Configuration[:currency_charge]}"
+        attributes = params.merge(
+          user_ip:     request.remote_ip,
+          resource_id: resource_params
         )
-        response = gateway.setup_purchase(amount_in_cents,
-          cancel_return_url: cancel_url(resource_params),
-          currency_code:     ::Configuration[:currency_charge],
-          description:       description,
-          ip:                request.remote_ip,
-          notify_url:        ipn_paypal_express_index_url,
-          return_url:        success_url(resource_params)
-        )
+        payment = Payment.new(resource, attributes)
+        payment.setup
 
-        process_paypal_message(response.params)
-        resource.update_attributes(
-          payment_method: CatarsePaypalExpress::Interface.new.name,
-          payment_token:  response.token
-        )
-
-        redirect_to gateway.redirect_url_for(response.token)
+        redirect_to payment.checkout_url
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
         flash.alert = t('paypal_error', scope: I18N_SCOPE)
@@ -40,13 +27,12 @@ module CatarsePaypalExpress
 
     def success
       begin
-        purchase = gateway.purchase(amount_in_cents, {
+        purchase = gateway.purchase(amount_in_cents,
           ip:       request.remote_ip,
           payer_id: params[:PayerID],
           token:    resource.payment_token
-        })
+        )
 
-        # we must get the deatils after the purchase in order to get the transaction_id
         process_paypal_message(purchase.params)
         if purchase.params['transaction_id']
           resource.update_attributes(

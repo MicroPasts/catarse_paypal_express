@@ -1,5 +1,3 @@
-# encoding: utf-8
-
 require 'spec_helper'
 
 describe CatarsePaypalExpress::PaypalExpressController do
@@ -10,7 +8,8 @@ describe CatarsePaypalExpress::PaypalExpressController do
     PaymentEngine.stub(:create_payment_notification)
     controller.stub(:main_app).and_return(main_app)
     controller.stub(:current_user).and_return(current_user)
-    controller.stub(:gateway).and_return(gateway)
+    controller.stub(:gateway).and_return(gateway) # to be removed
+    allow_any_instance_of(CatarsePaypalExpress::Payment).to receive(:gateway).and_return(gateway)
     controller.stub(:resource).and_return(contribution)
   end
 
@@ -51,23 +50,6 @@ describe CatarsePaypalExpress::PaypalExpressController do
   end
 
   describe "POST pay" do
-    context 'when response raises a exception' do
-      before do
-        allow(gateway).to receive(:setup_purchase).and_raise(StandardError)
-        allow(main_app).to receive(:new_project_contribution_path).and_return('error url')
-      end
-
-      it 'should assign flash error' do
-        post :pay, contribution_id: contribution.id, locale: 'en'
-        expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: I18N_SCOPE))
-      end
-
-      it 'redirects to new contribution page' do
-        post :pay, contribution_id: contribution.id, locale: 'en'
-        expect(response).to redirect_to('error url')
-      end
-    end
-
     context 'when successul' do
       let(:success_response) do
         double('success_response',
@@ -134,6 +116,23 @@ describe CatarsePaypalExpress::PaypalExpressController do
       it 'redirects to successful contribution page' do
         post :pay, contribution_id: contribution.id, locale: 'en'
         expect(response).to redirect_to('success url')
+      end
+    end
+
+    context 'when response raises a exception' do
+      before do
+        allow(gateway).to receive(:setup_purchase).and_raise(StandardError)
+        allow(main_app).to receive(:new_project_contribution_path).and_return('error url')
+      end
+
+      it 'should assign flash error' do
+        post :pay, contribution_id: contribution.id, locale: 'en'
+        expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: I18N_SCOPE))
+      end
+
+      it 'redirects to new contribution page' do
+        post :pay, contribution_id: contribution.id, locale: 'en'
+        expect(response).to redirect_to('error url')
       end
     end
   end
@@ -381,41 +380,6 @@ describe CatarsePaypalExpress::PaypalExpressController do
       it 'renders empty body' do
         post :ipn, ipn_data
         expect(subject.body.strip).to be_empty
-      end
-    end
-  end
-
-  describe '#gateway' do
-    subject { controller.gateway }
-    before do
-      allow(controller).to    receive(:gateway).and_call_original
-      allow(PaymentEngine).to receive(:configuration).and_return(paypal_config)
-    end
-
-    context "when we have the paypal configuration" do
-      let(:paypal_config) do
-        {
-          paypal_password:  'pass',
-          paypal_signature: 'signature',
-          paypal_username:  'username'
-        }
-      end
-
-      it 'returns an instance of PaypalExpressGateway' do
-        allow(ActiveMerchant::Billing::PaypalExpressGateway).to receive(:new).with(
-          login:     PaymentEngine.configuration[:paypal_username],
-          password:  PaymentEngine.configuration[:paypal_password],
-          signature: PaymentEngine.configuration[:paypal_signature]
-        ).and_return('gateway instance')
-        expect(subject).to eql('gateway instance')
-      end
-    end
-
-    context "when we do not have the paypal configuration" do
-      let(:paypal_config) { {} }
-
-      it 'returns nil' do
-        expect(subject).to be_nil
       end
     end
   end
