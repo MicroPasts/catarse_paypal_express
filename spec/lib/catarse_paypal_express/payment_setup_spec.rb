@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe CatarsePaypalExpress::Payment do
+describe CatarsePaypalExpress::PaymentSetup do
   subject { described_class.new(payable_resource, {}) }
   let(:payable_resource) { Contribution.new }
 

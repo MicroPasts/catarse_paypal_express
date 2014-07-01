@@ -11,11 +11,11 @@ module CatarsePaypalExpress
     def pay
       begin
         attributes = params.merge(
-          user_ip:     request.remote_ip,
-          resource_id: resource_params
+          resource_id: resource_params,
+          user_ip:     request.remote_ip
         )
-        payment = Payment.new(resource, attributes)
-        payment.setup
+        payment = PaymentSetup.new(resource, attributes)
+        payment.perform
 
         redirect_to payment.checkout_url
       rescue Exception => e
@@ -27,21 +27,19 @@ module CatarsePaypalExpress
 
     def success
       begin
-        purchase = gateway.purchase(amount_in_cents,
-          ip:       request.remote_ip,
-          payer_id: params[:PayerID],
-          token:    resource.payment_token
-        )
-
-        process_paypal_message(purchase.params)
-        if purchase.params['transaction_id']
-          resource.update_attributes(
-            payment_id: purchase.params['transaction_id']
-          )
-        end
+        attributes = {
+          payer_id:    params[:PayerID],
+          resource_id: resource_params,
+          user_ip:     request.remote_ip
+        }
+        checkout = PaymentCheckout.new(resource, attributes)
+        checkout.perform
 
         flash.notice = t('success', scope: I18N_SCOPE)
-        redirect_to main_app.project_contribution_path(project_id: resource.project, id: resource)
+        redirect_to main_app.project_contribution_path(
+          id:         resource,
+          project_id: resource.project
+        )
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
         flash.alert = t('paypal_error', scope: I18N_SCOPE)

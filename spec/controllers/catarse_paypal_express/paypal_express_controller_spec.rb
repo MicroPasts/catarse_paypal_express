@@ -179,7 +179,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
       end
 
       it 'fetches more information about transaction' do
-        expect(controller).to receive(:process_paypal_message).
+        expect_any_instance_of(CatarsePaypalExpress::Payment).to receive(:process_paypal_message).
           with(success_details.params)
         get :success, params
       end

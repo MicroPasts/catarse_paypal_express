@@ -1,34 +1,9 @@
 module CatarsePaypalExpress
   class Payment
-    include Engine.routes.url_helpers
-
-    attr_reader :resource, :attributes, :response
-    delegate :token, to: :response
+    attr_reader :resource, :attributes
 
     def initialize(resource, attributes)
       @resource, @attributes = resource, attributes
-    end
-
-    def setup
-      description = I18n.t('paypal_description',
-        scope:        PaypalExpressController::I18N_SCOPE,
-        project_name: resource.project.name,
-        value:        "#{fee_calculator.gross_amount} #{::Configuration[:currency_charge]}"
-      )
-      @response = gateway.setup_purchase(amount_in_cents,
-        cancel_return_url: cancel_return_url,
-        currency_code:     ::Configuration[:currency_charge],
-        description:       description,
-        ip:                attributes.fetch(:user_ip),
-        notify_url:        notify_url,
-        return_url:        return_url
-      )
-
-      process_paypal_message(response.params)
-      resource.update_attributes(
-        payment_method: CatarsePaypalExpress::Interface.new.name,
-        payment_token:  response.token
-      )
     end
 
     def process_paypal_message(data)
@@ -61,32 +36,6 @@ module CatarsePaypalExpress
 
     def gateway
       @gateway ||= CatarsePaypalExpress::Gateway.instance
-    end
-
-    protected
-
-    def checkout_url
-      gateway.redirect_url_for(token)
-    end
-
-    def return_url
-      success_url(
-        attributes.fetch(:resource_id),
-        host: Configuration[:base_url]
-      )
-    end
-
-    def cancel_return_url
-      cancel_url(
-        attributes.fetch(:resource_id),
-        host: Configuration[:base_url]
-      )
-    end
-
-    def notify_url
-      ipn_paypal_express_index_url(
-        host: Configuration[:base_url]
-      )
     end
 
     def amount_in_cents
