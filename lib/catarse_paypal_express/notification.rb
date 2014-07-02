@@ -9,8 +9,8 @@ module CatarsePaypalExpress
     def save
       Event.new(resource, attributes).process
       resource.update_attributes(
-        payer_email:         attributes[:payer_email],
-        payment_service_fee: attributes[:mc_fee]
+        payer_email:         attributes['payer_email'],
+        payment_service_fee: attributes['mc_fee']
       )
     end
 

@@ -24,9 +24,9 @@ describe CatarsePaypalExpress::PaypalExpressController do
     payment_id: 'payment id',
     project: project,
     pending?: true,
-    value: 10,
-    display_value: 'R$ 10,00',
-    price_in_cents: 1000,
+    value: 20,
+    display_value: 'R$ 20,00',
+    price_in_cents: 2000,
     user: current_user,
     payer_name: 'foo',
     payer_email: 'foo@bar.com',
@@ -162,10 +162,60 @@ describe CatarsePaypalExpress::PaypalExpressController do
     end
     let(:params) do
       {
-        id:        contribution.id,
-        locale:    'en',
-        PayerID:   '123',
-        use_route: 'catarse_paypal_express'
+        :contribution_id=>contribution.id.to_s,
+        :extra_data=>{
+          :payer_id=>"J6QPTZJ3VUYEC",
+          :resource_id=>{"contribution_id"=>contribution.id.to_s},
+          :user_ip=>"85.179.175.126",
+          "timestamp"=>"2014-07-02T11:16:54Z",
+          "ack"=>"Success",
+          "correlation_id"=>"644ae52867181",
+          "version"=>"72",
+          "build"=>"11624049",
+          "token"=>"EC-7UD01139H9289551L",
+          "transaction_id"=>"5S529942KX785625K",
+          "parent_transaction_id"=>nil,
+          "receipt_id"=>nil,
+          "transaction_type"=>"express-checkout",
+          "payment_type"=>"instant",
+          "payment_date"=>"2014-07-02T11:16:54Z",
+          "gross_amount"=>"20.00",
+          "gross_amount_currency_id"=>"GBP",
+          "fee_amount"=>"0.88",
+          "fee_amount_currency_id"=>"GBP",
+          "tax_amount"=>"0.00",
+          "tax_amount_currency_id"=>"GBP",
+          "exchange_rate"=>nil,
+          "payment_status"=>"Completed",
+          "pending_reason"=>"none",
+          "reason_code"=>"none",
+          "protection_eligibility"=>"Eligible",
+          "protection_eligibility_type"=>"ItemNotReceivedEligible,UnauthorizedPaymentEligible",
+          "secure_merchant_account_id"=>"36X593ULD53T6",
+          "success_page_redirect_requested"=>"false",
+          "Token"=>"EC-7UD01139H9289551L",
+          "PaymentInfo"=>{
+            "TransactionID"=>"5S529942KX785625K",
+            "ParentTransactionID"=>nil,
+            "ReceiptID"=>nil,
+            "TransactionType"=>"express-checkout",
+            "PaymentType"=>"instant",
+            "PaymentDate"=>"2014-07-02T11:16:54Z",
+            "GrossAmount"=>"20.00",
+            "FeeAmount"=>"0.88",
+            "TaxAmount"=>"0.00",
+            "ExchangeRate"=>nil,
+            "PaymentStatus"=>"Completed",
+            "PendingReason"=>"none",
+            "ReasonCode"=>"none",
+            "ProtectionEligibility"=>"Eligible",
+            "ProtectionEligibilityType"=>"ItemNotReceivedEligible,UnauthorizedPaymentEligible",
+            "SellerDetails"=>{
+              "SecureMerchantAccountID"=>"36X593ULD53T6"
+            }
+          },
+          "SuccessPageRedirectRequested"=>"false"
+        }
       }
     end
 
