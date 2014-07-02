@@ -7,7 +7,7 @@ describe CatarsePaypalExpress::Event do
   describe '#process' do
     before do
       expect(PaymentEngine).to receive(:create_payment_notification).
-        with('contribution_id' => contribution.id, 'extra_data' => data)
+        with('resource_id' => { 'contribution_id' => contribution.id }, 'extra_data' => data)
     end
 
     context "when data['checkout_status'] == 'PaymentActionCompleted'" do
