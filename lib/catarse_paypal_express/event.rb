@@ -35,7 +35,7 @@ module CatarsePaypalExpress
       else
         attributes
       end
-      notification_attributes = attributes.slice(:contribution_id, :match_id).
+      notification_attributes = attributes.slice(:resource_id).
         merge(extra_data: extra_data)
 
       PaymentEngine.create_payment_notification(notification_attributes)

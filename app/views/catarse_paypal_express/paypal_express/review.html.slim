@@ -3,10 +3,6 @@ strong#payment_section_title = t(:section_title, scope: 'projects.contributions.
 #catarse_paypal_express_form
   = simple_form_for :payment, url: pay_path(resource_params) do |f|
     = f.input :pay_fee, as: :hidden, input_html: { value: 1, 'data-pay-payment-fee' => '' }
-    - if params[:match_id].present?
-      = f.input :match_id, as: :hidden, input_html: { value: params[:match_id] }
-    - else
-      = f.input :contribution_id, as: :hidden, input_html: { value: params[:contribution_id] }
     section
       .row
         .large-6.columns.submit

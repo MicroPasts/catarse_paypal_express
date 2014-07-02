@@ -50,18 +50,30 @@ describe CatarsePaypalExpress::PaypalExpressController do
   end
 
   describe "POST pay" do
+    let(:params) do
+      {
+        "utf8"=>"✓",
+        "authenticity_token"=>"Pe5Mz1Yg80krG9XV8NZm4dPqBxfwVeVPJM+oRFQOBZ4=",
+        "payment"=>{
+          "pay_fee"=>"1",
+        },
+        "commit"=>"Confirm payment",
+        "contribution_id"=>contribution.id.to_s
+      }
+    end
+
     context 'when successul' do
+      before do
+        allow(main_app).to     receive(:new_project_contribution_path).and_return('success url')
+        allow(gateway).to      receive(:redirect_url_for).with('ABCD').and_return('success url')
+        allow(gateway).to      receive(:setup_purchase).and_return(success_response)
+        allow(contribution).to receive(:update_attributes)
+      end
       let(:success_response) do
         double('success_response',
           token:  'ABCD',
           params: { 'correlation_id' => '123' }
         )
-      end
-
-      before do
-        allow(main_app).to receive(:new_project_contribution_path).and_return('success url')
-        allow(gateway).to  receive(:redirect_url_for).with('ABCD').and_return('success url')
-        allow(gateway).to  receive(:setup_purchase).and_return(success_response)
       end
 
       it 'setups purchase using payment service' do
@@ -76,7 +88,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
             :return_url,
           )
         ).and_return(success_response)
-        post :pay, contribution_id: contribution.id, locale: 'en'
+        post :pay, params
       end
 
       context 'when user is paying fees' do
@@ -88,11 +100,13 @@ describe CatarsePaypalExpress::PaypalExpressController do
             4200,
             anything
           ).and_return(success_response)
-          post :pay, contribution_id: contribution.id, pay_fee: '1', locale: 'en'
+          post :pay, params
         end
       end
 
       context 'when user is not paying fees' do
+        before { params['payment']['pay_fee'] = '0' }
+
         it 'charge calculator\'s gross_amount in the service' do
           allow_any_instance_of(
             CatarsePaypalExpress::TransactionInclusiveFeeCalculator
@@ -101,7 +115,7 @@ describe CatarsePaypalExpress::PaypalExpressController do
             4200,
             anything
           ).and_return(success_response)
-          post :pay, contribution_id: contribution.id, pay_fee: '0', locale: 'en'
+          post :pay, params
         end
       end
 
@@ -110,11 +124,11 @@ describe CatarsePaypalExpress::PaypalExpressController do
           payment_method: 'paypal_express',
           payment_token:  'ABCD'
         )
-        post :pay, contribution_id: contribution.id, locale: 'en'
+        post :pay, params
       end
 
       it 'redirects to successful contribution page' do
-        post :pay, contribution_id: contribution.id, locale: 'en'
+        post :pay, params
         expect(response).to redirect_to('success url')
       end
     end
@@ -126,12 +140,12 @@ describe CatarsePaypalExpress::PaypalExpressController do
       end
 
       it 'should assign flash error' do
-        post :pay, contribution_id: contribution.id, locale: 'en'
+        post :pay, params
         expect(flash[:alert]).to eql(I18n.t('paypal_error', scope: I18N_SCOPE))
       end
 
       it 'redirects to new contribution page' do
-        post :pay, contribution_id: contribution.id, locale: 'en'
+        post :pay, params
         expect(response).to redirect_to('error url')
       end
     end

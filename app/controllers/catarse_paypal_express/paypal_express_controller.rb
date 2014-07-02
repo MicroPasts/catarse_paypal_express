@@ -11,6 +11,7 @@ module CatarsePaypalExpress
     def pay
       begin
         attributes = params.merge(
+          pay_fee:     params[:payment][:pay_fee],
           resource_id: resource_params,
           user_ip:     request.remote_ip
         )
