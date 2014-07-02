@@ -6,11 +6,6 @@ module CatarsePaypalExpress
     delegate :token, to: :response
 
     def perform
-      description = I18n.t('paypal_description',
-        scope:        PaypalExpressController::I18N_SCOPE,
-        project_name: resource.project.name,
-        value:        "#{fee_calculator.gross_amount} #{::Configuration[:currency_charge]}"
-      )
       @response = gateway.setup_purchase(amount_in_cents,
         cancel_return_url: cancel_return_url,
         currency_code:     ::Configuration[:currency_charge],
@@ -27,10 +22,18 @@ module CatarsePaypalExpress
       )
     end
 
-    protected
-
     def checkout_url
       gateway.redirect_url_for(token)
+    end
+
+    protected
+
+    def description
+      I18n.t('paypal_description',
+        scope:        PaypalExpressController::I18N_SCOPE,
+        project_name: resource.project.name,
+        value:        "#{fee_calculator.gross_amount} #{::Configuration[:currency_charge]}"
+      )
     end
 
     def return_url
