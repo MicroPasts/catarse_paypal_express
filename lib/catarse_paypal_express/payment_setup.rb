@@ -49,9 +49,7 @@ module CatarsePaypalExpress
     end
 
     def notify_url
-      ipn_paypal_express_index_url(
-        host: Configuration[:base_url]
-      )
+      ipn_url(host: Configuration[:base_url])
     end
   end
 end
