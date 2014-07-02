@@ -290,14 +290,20 @@ describe CatarsePaypalExpress::PaypalExpressController do
       allow(main_app).to receive(:new_project_contribution_path).
         and_return('create contribution url')
     end
+    let(:params) do
+      {
+        'contribution_id' => contribution.id.to_s,
+        'token'           => 'EC-9F9496013K024271N'
+      }
+    end
 
     it 'should show for user the flash message' do
-      get :cancel, id: contribution.id, locale: 'en'
+      get :cancel, params
       expect(flash[:alert]).to eql(I18n.t('paypal_cancel', scope: I18N_SCOPE))
     end
 
     it 'redirects to new contribution url' do
-      get :cancel, id: contribution.id, locale: 'en'
+      get :cancel, params
       expect(response).to redirect_to('create contribution url')
     end
   end
