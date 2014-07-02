@@ -2,6 +2,8 @@ module CatarsePaypalExpress
   class PaypalExpressController < ApplicationController
     include ActiveMerchant::Billing::Integrations
 
+    layout :false
+
     I18N_SCOPE = 'projects.contributions.checkout'
     helper_method :resource_params
 

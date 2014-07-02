@@ -42,11 +42,18 @@ describe CatarsePaypalExpress::PaypalExpressController do
     payment_method: 'paypal_express'
   }) }
 
-  describe "GET review" do
+  describe 'GET review' do
     before do
       get :review, id: contribution.id
     end
-    it{ should render_template(:review) }
+
+    it 'renders review template' do
+      expect(response).to render_template(:review)
+    end
+
+    it 'renders review template' do
+      expect(response).to_not render_template(layout: 'application')
+    end
   end
 
   describe "POST pay" do
