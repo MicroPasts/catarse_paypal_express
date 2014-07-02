@@ -102,6 +102,12 @@ describe CatarsePaypalExpress::PaypalExpressController do
           ).and_return(success_response)
           post :pay, params
         end
+
+        it 'updates contribution say so' do
+          expect(contribution).to receive(:update_attributes).
+            with(hash_including(payment_service_fee_paid_by_user: true))
+          post :pay, params
+        end
       end
 
       context 'when user is not paying fees' do
@@ -117,12 +123,20 @@ describe CatarsePaypalExpress::PaypalExpressController do
           ).and_return(success_response)
           post :pay, params
         end
+
+        it 'updates contribution say so' do
+          expect(contribution).to receive(:update_attributes).
+            with(hash_including(payment_service_fee_paid_by_user: false))
+          post :pay, params
+        end
       end
 
       it 'updates contribution with payment information' do
         expect(contribution).to receive(:update_attributes).with(
-          payment_method: 'paypal_express',
-          payment_token:  'ABCD'
+          hash_including(
+            payment_method: 'paypal_express',
+            payment_token:  'ABCD'
+          )
         )
         post :pay, params
       end

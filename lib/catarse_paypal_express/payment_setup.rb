@@ -17,8 +17,9 @@ module CatarsePaypalExpress
 
       Event.new(resource, attributes.merge(response.params)).process
       resource.update_attributes(
-        payment_method: CatarsePaypalExpress::Interface.new.name,
-        payment_token:  response.token
+        payment_method:                   CatarsePaypalExpress::Interface.new.name,
+        payment_service_fee_paid_by_user: fees_paid_user?,
+        payment_token:                    response.token
       )
     end
 
