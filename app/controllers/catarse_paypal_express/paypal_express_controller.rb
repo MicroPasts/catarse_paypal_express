@@ -53,10 +53,8 @@ module CatarsePaypalExpress
     end
 
     def ipn
-      notification = Notification.new(
-        resource,
-        params.merge(raw: request.raw_post)
-      )
+      attributes   = resource_params.merge(params).merge(raw: request.raw_post)
+      notification = Notification.new(resource, attributes)
       if notification.valid?
         notification.save
       else

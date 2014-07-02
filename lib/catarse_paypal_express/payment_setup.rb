@@ -38,15 +38,13 @@ module CatarsePaypalExpress
 
     def return_url
       success_url(
-        attributes.fetch(:resource_id),
-        host: Configuration[:base_url]
+        attributes.fetch(:resource_id).merge(host: Configuration[:base_url])
       )
     end
 
     def cancel_return_url
       cancel_url(
-        attributes.fetch(:resource_id),
-        host: Configuration[:base_url]
+        attributes.fetch(:resource_id).merge(host: Configuration[:base_url])
       )
     end
 
