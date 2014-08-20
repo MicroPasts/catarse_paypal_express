@@ -24,7 +24,7 @@ module CatarsePaypalExpress
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
         flash.alert = t('paypal_error', scope: I18N_SCOPE)
-        redirect_to main_app.new_project_contribution_path(resource.project)
+        redirect_to new_resource_path
       end
     end
 
@@ -39,20 +39,17 @@ module CatarsePaypalExpress
         checkout.perform
 
         flash.notice = t('success', scope: I18N_SCOPE)
-        redirect_to main_app.project_contribution_path(
-          id:         resource,
-          project_id: resource.project
-        )
+        redirect_to resource_path
       rescue Exception => e
         Rails.logger.info "-----> #{e.inspect}"
         flash.alert = t('paypal_error', scope: I18N_SCOPE)
-        redirect_to main_app.new_project_contribution_path(resource.project)
+        redirect_to new_resource_path
       end
     end
 
     def cancel
       flash.alert = t('paypal_cancel', scope: I18N_SCOPE)
-      redirect_to main_app.new_project_contribution_path(resource.project)
+      redirect_to new_resource_path
     end
 
     def ipn
@@ -84,6 +81,21 @@ module CatarsePaypalExpress
 
     def resource_params
       @resource_params ||= Hash[*params.slice(:contribution_id, :match_id).first]
+    end
+
+    def resource_path
+      main_app.public_send("project_#{resource_type}_path",
+        id:         resource,
+        project_id: resource.project
+      )
+    end
+
+    def new_resource_path
+      main_app.public_send("new_project_#{resource_type}_path", resource.project)
+    end
+
+    def resource_type
+      resource_params.keys.first[0..-4]
     end
   end
 end
